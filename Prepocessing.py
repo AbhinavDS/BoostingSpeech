@@ -24,6 +24,11 @@ for filename in os.listdir(speech_dir):
         path_name =(os.path.join(speech_dir, filename))
         y, sr = librosa.load(path_name,sr=16000)  
         speech_features_mfcc = librosa.feature.mfcc(y=y, sr=16000,n_mfcc=20)
+        #max length determined from the max length in test dataset
+        mfcc_padded = pad_sequences(speech_features_mfcc, maxlen=55376, dtype='float', padding='post',
+                                truncating='post')
         speech_features_spec = librosa.feature.melspectrogram(y=y,sr=sr)
-        mfcc.append(speech_features_mfcc)
-        spec.append(speech_features_spec)
+        spec_padded = pad_sequences(speech_features_spec, maxlen=55376, dtype='float', padding='post',
+                                truncating='post')
+        mfcc.append(mfcc_padded)
+        spec.append(spec_padded)
