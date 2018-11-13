@@ -30,6 +30,7 @@ x 24
 y 25
 z 26
 ' 27
+_ 28
 """
 
 char_map = {}
@@ -41,7 +42,6 @@ for line in char_map_str.strip().split('\n'):
     index_map[int(index)] = ch
 
 index_map[0] = ' '
-
 def text_to_int_sequence(text):
     """ Use a character map and convert text to an integer sequence """
     int_sequence = []
@@ -50,7 +50,7 @@ def text_to_int_sequence(text):
             if c == ' ':
                 ch = char_map['<SPACE>']
             else:
-                ch = char_map.get(c)
+                ch = char_map[c]
             int_sequence.append(ch)
     return int_sequence
     
@@ -77,6 +77,6 @@ for filename in os.listdir(text_dir):
         int_sequence = text_to_int_sequence(test_text)
         sequences_final.append(int_sequence)
 for item in sequences_final:
-    print ("item::",item)
+    #print ("item::",item)
     int_seq_file.write("%s" % item)
     int_seq_file.write("\n")
