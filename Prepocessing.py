@@ -10,16 +10,16 @@ import numpy as np
 from keras.preprocessing.sequence import pad_sequences
 import librosa
 from librosa.feature import mfcc, melspectrogram
-
+import os
 #preprocessing speech to mfcc and spectrogram 
 #Note that the resulting features are not of the same size
 
 #change the directory
-speech_dir='/home/madhumitha/Desktop/Fall2018/DeepLearningSeminar/Project2/TEDLIUM_release1/test/sph'
+speech_dir='TEDLIUM_release1/test/sph'
 mfcc=[]
 spec=[]
 for filename in os.listdir(speech_dir):
-    #print filename
+    print filename
     if filename.endswith(".wav"): 
         path_name =(os.path.join(speech_dir, filename))
         y, sr = librosa.load(path_name,sr=16000)  
@@ -32,3 +32,6 @@ for filename in os.listdir(speech_dir):
                                 truncating='post')
         mfcc.append(mfcc_padded)
         spec.append(spec_padded)
+        print ("mfcc::", mfcc)
+        print ("spec::", spec)
+

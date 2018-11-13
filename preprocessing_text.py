@@ -45,18 +45,21 @@ index_map[0] = ' '
 def text_to_int_sequence(text):
     """ Use a character map and convert text to an integer sequence """
     int_sequence = []
-    for c in text:
-        if c == ' ':
-            ch = char_map['<SPACE>']
-        else:
-            ch = char_map[c]
-        int_sequence.append(ch)
+    for sent in text:
+        for c in sent:
+            if c == ' ':
+                ch = char_map['<SPACE>']
+            else:
+                ch = char_map.get(c)
+            int_sequence.append(ch)
     return int_sequence
     
 #use text_to_int_sequence() to generate numbers:
 
-text_dir='/home/madhumitha/Desktop/Fall2018/DeepLearningSeminar/Project2/TEDLIUM_release1/test/stm'
+text_dir='TEDLIUM_release1/test/stm'
 text_final=[]
+sequences_final=[]
+int_seq_file = open("TEDLIUM_release1/test/stm/output.txt","w")
 for filename in os.listdir(text_dir):
     count=0
     #print filename
@@ -71,5 +74,9 @@ for filename in os.listdir(text_dir):
                 test_text.append(text)
         text_final.append(test_text)
         count=count+1
-        
-        
+        int_sequence = text_to_int_sequence(test_text)
+        sequences_final.append(int_sequence)
+for item in sequences_final:
+    print ("item::",item)
+    int_seq_file.write("%s" % item)
+    int_seq_file.write("\n")
