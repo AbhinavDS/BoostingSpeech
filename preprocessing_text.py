@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import numpy as np
+from keras.preprocessing.sequence import pad_sequences
 #borrowed from github for text: https://github.com/holm-aune-bachelor2018/ctc/blob/master/utils/text_utils.py
 char_map_str = """
 <SPACE> 0
@@ -59,7 +61,7 @@ def text_to_int_sequence(text):
 text_dir='TEDLIUM_release1/test/stm'
 text_final=[]
 sequences_final=[]
-int_seq_file = open("TEDLIUM_release1/test/stm/output.txt","w")
+
 for filename in os.listdir(text_dir):
     count=0
     #print filename
@@ -68,7 +70,7 @@ for filename in os.listdir(text_dir):
         data = pd.read_csv(path_name, header = None)
         test_text=[]
         row=data.shape[0]
-        for x in xrange(row):
+        for x in range(0,row):
             text=data[2][x][8:]
             if text!=' ignore_time_segment_in_scoring':
                 test_text.append(text)
@@ -76,7 +78,13 @@ for filename in os.listdir(text_dir):
         count=count+1
         int_sequence = text_to_int_sequence(test_text)
         sequences_final.append(int_sequence)
+
+maxlen = 0
 for item in sequences_final:
-    #print ("item::",item)
-    int_seq_file.write("%s" % item)
-    int_seq_file.write("\n")
+    if len(item) > maxlen:
+        maxlen = len(item)
+
+seq_padded = pad_sequences(sequences_final, maxlen=maxlen, dtype='int32', padding='post',
+                                truncating='post', value=-1)
+
+np.save(text_dir+"/label.npy", seq_padded)
