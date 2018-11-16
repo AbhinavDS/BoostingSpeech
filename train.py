@@ -47,7 +47,7 @@ def run_ctc():
 
 		# Here we use sparse_placeholder that will generate a
 		# SparseTensor required by ctc_loss op.
-		targets = tf.placeholder(tf.int32)
+		targets = tf.sparse_placeholder(tf.int32)
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
@@ -91,7 +91,8 @@ def run_ctc():
 		target = data_y[counter:counter+1]
 		indices, values, shape = sparse_tuple_from(target)
 		# target = tf.SparseTensor(indices=indices, values=values, shape=shape) 
-		target = (indices, values, shape)
+                target = (indices, values, shape)
+                print('target::',target)
 		return data_x1[counter:counter+1], target, data_y_len[counter:counter+1], data_y[counter:counter+1]
 
 	def next_testing_batch():
@@ -110,7 +111,7 @@ def run_ctc():
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len}
-				print (feed)
+                                print ('FEED::', feed)
 
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * batch_size
