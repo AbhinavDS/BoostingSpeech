@@ -13,8 +13,8 @@ speech_dir='TEDLIUM_release1/test/sph'
 mfcc=[]
 spec=[]
 for filename in os.listdir(speech_dir):
-    print (filename)
     if filename.endswith(".wav"): 
+        print (filename)
         path_name =(os.path.join(speech_dir, filename))
         y, sr = librosa.load(path_name,sr=16000)  
         speech_features_mfcc = librosa.feature.mfcc(y=y, sr=16000,n_mfcc=20)

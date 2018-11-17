@@ -9,6 +9,10 @@ data_y  = np.load("TEDLIUM_release1/test/stm/label.npy")
 data_x1 = np.transpose(data_x1, axes=[0, 2, 1])[0:1]
 data_x2 = np.transpose(data_x2, axes=[0, 2, 1])[0:1]
 data_y = data_y[0:1]
+
+SPACE_TOKEN = '<space>'
+SPACE_INDEX = 0
+FIRST_INDEX = ord('a') - 1 
 #print data_y
 # Get sequence length
 data_y_len = np.zeros((data_y.shape[0]), dtype=int)
@@ -131,7 +135,8 @@ def run_ctc():
 
 	def next_testing_batch():
 		# for now testing and training on same
-		return next_training_batch()
+		a,b,c,d = next_training_batch()
+		return a,b,c,d,0
 
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
