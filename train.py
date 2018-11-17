@@ -50,9 +50,9 @@ def run_ctc():
 		targets = tf.sparse_placeholder(tf.int32)
 		
 		# 1d array of size [batch_size]
-		seq_len = tf.placeholder(tf.int32, [None])
-
-
+		#seq_len = tf.placeholder(tf.int32, [None])
+                seq_len=tf.placeholder(tf.int32)
+                #seq_len=1
 		logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
 
@@ -93,7 +93,8 @@ def run_ctc():
 		# target = tf.SparseTensor(indices=indices, values=values, shape=shape) 
                 target = (indices, values, shape)
                 print('target::',target)
-		return data_x1[counter:counter+1], target, data_y_len[counter:counter+1], data_y[counter:counter+1]
+                seq = [data_y_len[counter:counter+1]]
+		return data_x1[counter:counter+1], target, seq, data_y[counter:counter+1]
 
 	def next_testing_batch():
 		# for now testing and training on same
@@ -112,6 +113,9 @@ def run_ctc():
 						targets: train_targets,
 						seq_len: train_seq_len}
                                 print ('FEED::', feed)
+                                print train_inputs.shape
+                                print len(train_targets)
+                                print len(train_seq_len)
 
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * batch_size
