@@ -1,11 +1,5 @@
 import argparse
 from datetime import datetime
-import keras.backend as K
-import tensorflow as tf
-from keras import models
-from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
-from keras.optimizers import Adam
-from keras.utils import multi_gpu_model
 import numpy as np
 from keras.preprocessing.sequence import pad_sequences
 import librosa
