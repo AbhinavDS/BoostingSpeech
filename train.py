@@ -9,7 +9,7 @@ data_y  = np.load("TEDLIUM_release1/test/stm/label.npy")
 data_x1 = np.transpose(data_x1, axes=[0, 2, 1])[0:1]
 data_x2 = np.transpose(data_x2, axes=[0, 2, 1])[0:1]
 data_y = data_y[0:1]
-
+#print data_y
 # Get sequence length
 data_y_len = np.zeros((data_y.shape[0],1), dtype=int)
 for i in range(len(data_y)):
@@ -17,13 +17,13 @@ for i in range(len(data_y)):
 		if data_y[i][j] != -1:
 			data_y_len[i] = j+1
 			break
-
+#data_y = np.reshape(data_y, (data_y.shape[1],1))
 print (data_x1.shape, data_x2.shape, data_y.shape, data_y_len.shape)
 
 # Some configs
 num_features = data_x1.shape[-1]
-# Accounting the 0th index +  space + blank label = 28 characters
-num_classes = ord('z') - ord('a') + 1 + 1 + 1
+# Accounting the 0th index +  space + blank label + eos = 29 characters
+num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1
 
 # Hyper-parameters
 num_epochs = 10000
@@ -47,14 +47,39 @@ def run_ctc():
 
 		# Here we use sparse_placeholder that will generate a
 		# SparseTensor required by ctc_loss op.
-		targets = tf.sparse_placeholder(tf.int32)
+		targets = tf.sparse_placeholder(tf.int32,[None,None])#,None])
 		
 		# 1d array of size [batch_size]
-		#seq_len = tf.placeholder(tf.int32, [None])
-                seq_len=tf.placeholder(tf.int32)
-                #seq_len=1
-		logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
-		
+		seq_len = tf.placeholder(tf.int32, [None])
+		#seq_len=tf.placeholder(tf.int32)
+		#seq_len=1
+		#logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+		cell = tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True)
+
+		# Stacking rnn cells
+		stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers,state_is_tuple=True)
+		# The second output is the last state and we will no use that
+		outputs, _ = tf.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32)
+
+		shape = tf.shape(inputs)
+		batch_s, max_time_steps = shape[0], shape[1]
+
+		# Reshaping to apply the same weights over the timesteps
+		outputs = tf.reshape(outputs, [-1, num_hidden])
+
+		W = tf.Variable(tf.truncated_normal([num_hidden, num_classes], stddev=0.1))
+		# Zero initialization
+		# Tip: Is tf.zeros_initializer the same?
+		b = tf.Variable(tf.constant(0., shape=[num_classes]))
+
+		# Doing the affine projection
+		logits = tf.matmul(outputs, W) + b
+
+		# Reshaping back to the original shape
+		logits = tf.reshape(logits, [batch_s, -1, num_classes])
+
+		# Time major
+		logits = tf.transpose(logits, (1, 0, 2))
 
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
@@ -74,7 +99,6 @@ def run_ctc():
 	def sparse_tuple_from(sequences, dtype=np.int32):
 		indices = []
 		values = []
-
 		for n, seq in enumerate(sequences):
 			indices.extend(zip([n] * len(seq), range(len(seq))))
 			values.extend(seq)
@@ -82,18 +106,25 @@ def run_ctc():
 		indices = np.asarray(indices, dtype=np.int64)
 		values = np.asarray(values, dtype=dtype)
 		shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1] + 1], dtype=np.int64)
-		return (indices, values, shape)
+		print ("SHAPE",shape)
+		print ("IN",indices)
+		print ("Values",values)
+		#return indices,values,shape
+		target = tf.SparseTensor(indices, values, shape) 
+		return target
 
 	def next_training_batch():
 		global counter, total_len
 		counter += 1
 		counter %= total_len
 		target = data_y[counter:counter+1]
-		indices, values, shape = sparse_tuple_from(target)
+		print ("T",type(data_y), type(target))
+		#indices, values, shape = sparse_tuple_from(target)
 		# target = tf.SparseTensor(indices=indices, values=values, shape=shape) 
-                target = (indices, values, shape)
-                print('target::',target)
-                seq = [data_y_len[counter:counter+1]]
+		target = sparse_tuple_from(target)
+		print('target::',target)
+
+		seq = [data_y_len[counter:counter+1]]
 		return data_x1[counter:counter+1], target, seq, data_y[counter:counter+1]
 
 	def next_testing_batch():
@@ -112,10 +143,7 @@ def run_ctc():
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len}
-                                print ('FEED::', feed)
-                                print train_inputs.shape
-                                print len(train_targets)
-                                print len(train_seq_len)
+				print ('FEED::', feed)
 
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * batch_size

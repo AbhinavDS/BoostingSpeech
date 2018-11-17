@@ -43,9 +43,9 @@ num_classes = ord('z') - ord('a') + 1 + 1 + 1
 num_epochs = 10000
 num_hidden = 100
 num_layers = 1
-batch_size = 2000
+batch_size = 1
 
-num_examples = 4000000
+num_examples = 1
 num_batches_per_epoch = int(num_examples / batch_size)
 
 counter = 0

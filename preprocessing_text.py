@@ -4,7 +4,7 @@ import numpy as np
 from keras.preprocessing.sequence import pad_sequences
 #borrowed from github for text: https://github.com/holm-aune-bachelor2018/ctc/blob/master/utils/text_utils.py
 char_map_str = """
-<SPACE> 0
+<EOS> 0
 a 1
 b 2
 c 3
@@ -33,6 +33,7 @@ y 25
 z 26
 ' 27
 _ 28
+<SPACE> 29
 """
 
 char_map = {}
@@ -85,6 +86,6 @@ for item in sequences_final:
         maxlen = len(item)
 
 seq_padded = pad_sequences(sequences_final, maxlen=maxlen, dtype='int32', padding='post',
-                                truncating='post', value=-1)
+                                truncating='post', value=0)
 
 np.save(text_dir+"/label.npy", seq_padded)
