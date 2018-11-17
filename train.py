@@ -11,7 +11,7 @@ data_x2 = np.transpose(data_x2, axes=[0, 2, 1])[0:1]
 data_y = data_y[0:1]
 #print data_y
 # Get sequence length
-data_y_len = np.zeros((data_y.shape[0],1), dtype=int)
+data_y_len = np.zeros((data_y.shape[0]), dtype=int)
 for i in range(len(data_y)):
 	for j in range(len(data_y[i])-1, -1, -1):
 		if data_y[i][j] != -1:
@@ -23,8 +23,8 @@ print (data_x1.shape, data_x2.shape, data_y.shape, data_y_len.shape)
 # Some configs
 num_features = data_x1.shape[-1]
 # Accounting the 0th index +  space + blank label + eos = 29 characters
-num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1
-
+num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
+print ("NC ", num_classes)
 # Hyper-parameters
 num_epochs = 10000
 num_hidden = 100
@@ -37,6 +37,8 @@ num_batches_per_epoch = int(num_examples / batch_size)
 counter = 0
 total_len = len(data_y)
 
+print ("RUN")
+
 def run_ctc():
 	graph = tf.Graph()
 	global counter, total_len
@@ -47,7 +49,7 @@ def run_ctc():
 
 		# Here we use sparse_placeholder that will generate a
 		# SparseTensor required by ctc_loss op.
-		targets = tf.sparse_placeholder(tf.int32,[None,None])#,None])
+		targets = tf.sparse_placeholder(tf.int32)
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
@@ -110,8 +112,7 @@ def run_ctc():
 		print ("IN",indices)
 		print ("Values",values)
 		#return indices,values,shape
-		target = tf.SparseTensor(indices, values, shape) 
-		return target
+		return (indices, values, shape) 
 
 	def next_training_batch():
 		global counter, total_len
@@ -124,7 +125,8 @@ def run_ctc():
 		target = sparse_tuple_from(target)
 		print('target::',target)
 
-		seq = [data_y_len[counter:counter+1]]
+		seq = data_y_len[counter:counter+1]
+		print (seq, seq.shape)
 		return data_x1[counter:counter+1], target, seq, data_y[counter:counter+1]
 
 	def next_testing_batch():
