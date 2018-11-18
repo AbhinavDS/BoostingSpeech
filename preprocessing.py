@@ -3,10 +3,12 @@ from keras.preprocessing.sequence import pad_sequences
 from librosa.feature import mfcc, melspectrogram
 
 import os
+import operator
 import argparse
 import librosa
 import numpy as np
 import pandas as pd
+
 
 #preprocessing speech to mfcc and spectrogram 
 #Note that the resulting features are not of the same size
@@ -72,11 +74,10 @@ text_dir='TEDLIUM_release1/test/stm'
 speech_dir='TEDLIUM_release1/test/sph'
 mfcc=[]
 spec=[]
-text_final=[]
 sequences_final=[]
+mfcc_feat_len = 50
 
 for filename in os.listdir(text_dir):
-	count=0
 	if filename.endswith(".stm"): 
 		text_path_name =(os.path.join(text_dir, filename))
 		speech_path_name=(os.path.join(speech_dir, filename[:-4]+".wav"))
@@ -87,44 +88,61 @@ for filename in os.listdir(text_dir):
 		print (filename[:-4]+".wav", filename)
 
 
-		# SPEECH
+		# LOAD WHOLE SPEECH
 		y, sr = librosa.load(speech_path_name,sr=16000)  
-		speech_features_mfcc = librosa.feature.mfcc(y=y, sr=16000,n_mfcc=20)
-		#max length determined from the max length in test dataset
-		mfcc_padded = pad_sequences(speech_features_mfcc, maxlen=55376, dtype='float', padding='post',
-								truncating='post')
-		speech_features_spec = librosa.feature.melspectrogram(y=y,sr=sr)
-		spec_padded = pad_sequences(speech_features_spec, maxlen=55376, dtype='float', padding='post',
-								truncating='post')
-		mfcc.append(mfcc_padded)
-		spec.append(spec_padded)
-
+		
 		# TEXT
 		data = pd.read_csv(text_path_name, header = None)
 		test_text=[]
+		time_seq = []
 		row=data.shape[0]
 		for x in range(0,row):
+			time=data[0][x].strip().split()[3]
+			time_seq.append(float(time))
 			text=data[2][x][8:]
 			if text!=' ignore_time_segment_in_scoring':
+				text = text_to_int_sequence(text)
 				test_text.append(text)
-		text_final.append(test_text)
-		count=count+1
-		int_sequence = text_to_int_sequence(test_text)
-		sequences_final.append(int_sequence)
+			else:
+				test_text.append([])
+		sequences_final.extend(test_text)
 
+		time_seq = list(map(operator.mul, time_seq, [sr]*len(time_seq)))
+		time_seq = list(map(int, time_seq))
+		time_seq.append(y.shape[0])
+		for i in range(len(time_seq)-1):
+			time1 = time_seq[i]
+			time2 = time_seq[i+1]-1
+			speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=mfcc_feat_len)
+			speech_features_spec = librosa.feature.melspectrogram(y=y[time1:time2],sr=sr)
+			mfcc.append(speech_features_mfcc)
+			spec.append(speech_features_spec)
+
+maxlen_mfcc = 15000
+maxlen_spec = 15000
+maxlen_seq = 800
+
+for i in range(len(mfcc)):
+	if len(mfcc[i][0]) > maxlen_mfcc:
+		maxlen_mfcc = len(mfcc[i][0])
+	if len(spec[i][0]) > maxlen_spec:
+		maxlen_spec = len(spec[i][0])
+	if len(sequences_final[i]) > maxlen_seq:
+		maxlen_seq = len(sequences_final[i])
+
+print (maxlen_mfcc, maxlen_spec, maxlen_seq)
+for i in range(len(mfcc)):
+	mfcc[i] = pad_sequences(mfcc[i], maxlen=maxlen_mfcc, dtype='float', padding='post', truncating='post')
+	spec[i] = pad_sequences(spec[i], maxlen=maxlen_spec, dtype='float', padding='post', truncating='post')
+seq_padded = pad_sequences(sequences_final, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
+
+mfcc = mfcc[:10]
+spec = spec[:10]
+seq_padded = seq_padded[:10]
 
 mfcc = np.array(mfcc)
 spec = np.array(spec)
-
-maxlen = 0
-for item in sequences_final:
-	if len(item) > maxlen:
-		maxlen = len(item)
-
-seq_padded = pad_sequences(sequences_final, maxlen=maxlen, dtype='int32', padding='post',
-								truncating='post', value=29)
 		
-
 np.save(speech_dir+"/mfcc.npy", mfcc)
 np.save(speech_dir+"/spec.npy", spec)
 np.save(text_dir+"/label.npy", seq_padded)

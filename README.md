@@ -8,9 +8,8 @@
 
 ## Instructions
 sudo apt-get install sox
-#cd to .sph directory
-#The following command will convert .sph to .wav and store it in the same directory 
+cd to .sph directory
+The following command will convert .sph to .wav and store it in the same directory 
 for f in *.sph; do sox -t sph "$f" -b 16  -t wav "${f%.*}.wav"; done
 
-
-#we may have to do this and then upload to TACC
+we may have to do this and then upload to TACC

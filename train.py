@@ -1,51 +1,36 @@
 import time
 import numpy as np
 import tensorflow as tf
-import model1 
-# DATA
-data_x1 = np.load("TEDLIUM_release1/test/sph/mfcc.npy")
-data_x2 = np.load("TEDLIUM_release1/test/sph/spec.npy")
-data_y  = np.load("TEDLIUM_release1/test/stm/label.npy")
-data_x1 = np.transpose(data_x1, axes=[0, 2, 1])[0:1]
-data_x2 = np.transpose(data_x2, axes=[0, 2, 1])[0:1]
-data_y = data_y[0:1]
+import model1
+from preprocessing_yield import data_generator
+
 
 SPACE_TOKEN = '<space>'
 SPACE_INDEX = 0
 FIRST_INDEX = ord('a') - 1 
 
-# Get sequence length
-data_y_len = np.zeros((data_y.shape[0]), dtype=int)
-
-for i in range(len(data_y)):
-	for j in range(len(data_y[i])-1, -1, -1):
-		if data_y[i][j] != -1:
-			data_y_len[i] = j+1
-			break
-
-print (data_x1.shape, data_x2.shape, data_y.shape, data_y_len.shape)
 
 # Some configs
-num_features = data_x1.shape[-1]
+feature = 'spec'
+if feature == 'spec':
+	num_features = 128
+else:
+	num_features = 50
 
 # Accounting the 0th index +  space + blank label + eos = 29 characters
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameters
-num_epochs = 10000
+num_epochs = 200#00
 num_hidden = 100
 num_layers = 1
 batch_size = 1
 
-num_examples = 1
-num_batches_per_epoch = int(num_examples / batch_size)
-
-counter = 0
-total_len = len(data_y)
+train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
+valid_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
 
 def run_ctc():
 	graph = tf.Graph()
-	global counter, total_len
 	with graph.as_default():
 		# Has size [batch_size, max_step_size, num_features], but the
 		# batch_size and max_step_size can vary along each step
@@ -67,7 +52,8 @@ def run_ctc():
 
 		# optimizer = tf.train.AdamOptimizer().minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=0.005, momentum=0.9).minimize(cost)
+		optimizer = tf.train.MomentumOptimizer(learning_rate=0.0008, momentum=0.9).minimize(cost)
+		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
 		# (it's slower but you'll get better results)
@@ -90,30 +76,28 @@ def run_ctc():
 		return (indices, values, shape) 
 
 	def next_training_batch():
-		global counter, total_len
-		counter += 1
-		counter %= total_len
-		target = data_y[counter:counter+1]
-		target = sparse_tuple_from(target)
+		global train_data_gen
+		data_x, data_y, len_y, epoch_num = next(train_data_gen)
+		target = sparse_tuple_from(data_y)
+		return data_x, target, len_y, data_y, epoch_num
 
-		seq = data_y_len[counter:counter+1]
-		return data_x1[counter:counter+1], target, seq, data_y[counter:counter+1]
-
-	def next_testing_batch():
-		# for now testing and training on same
-		a,b,c,d = next_training_batch()
-		return a,b,c,d,0
+	def next_validation_batch():
+		global valid_data_gen
+		data_x, data_y, len_y, _ = next(valid_data_gen)
+		target = sparse_tuple_from(data_y)
+		return data_x, target, len_y, data_y, 0
 
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
 
-		for curr_epoch in range(num_epochs):
+		for curr_epoch in range(num_epochs):	
 			train_cost = train_ler = 0
 			start = time.time()
-
-			for batch in range(num_batches_per_epoch):
-				train_inputs, train_targets, train_seq_len, original = next_training_batch()
-				
+			num_examples = 0
+			epoch_num = curr_epoch
+			while(epoch_num<=curr_epoch):
+				train_inputs, train_targets, train_seq_len, original, epoch_num = next_training_batch()
+				# print (train_targets)
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len}
@@ -132,13 +116,14 @@ def run_ctc():
 				# Replacing space label to space
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
+				num_examples += len(train_targets)
 				# print('Original: %s' % original)
 				# print('Decoded: %s' % str_decoded)
-
+				break
 			train_cost /= num_examples
 			train_ler /= num_examples
 
-			val_inputs, val_targets, val_seq_len, val_original, random_shift = next_testing_batch()
+			val_inputs, val_targets, val_seq_len, val_original, random_shift = next_validation_batch()
 			val_feed = {inputs: val_inputs,
 						targets: val_targets,
 						seq_len: val_seq_len}
@@ -149,7 +134,7 @@ def run_ctc():
 			d = session.run(decoded[0], feed_dict=val_feed)
 			
 			if not curr_epoch:
-				val_original = ''.join([chr(x) for x in val_original[0] + FIRST_INDEX])
+				val_original = ''.join([chr(x) for x in np.array(val_original[0]) + FIRST_INDEX])
 				# Replacing blank label to none
 				val_original = val_original.replace(chr(ord('z') + 1), '')
 				# Replacing space label to space
