@@ -3,7 +3,7 @@ import tensorflow as tf
 import keras.backend as K
 np.random.seed(1337)  # for reproducibility
 from keras.models import *
-from keras.layers import Input, Dense, multiply
+from keras.layers import Input, Dense, merge
 
 input_dim = 32
 
@@ -48,7 +48,7 @@ def build_model(inputs, seq_len):
 
     # ATTENTION PART STARTS HERE
     attention_probs = Dense(seq_len, activation='softmax', name='attention_vec')(inputs)
-    attention_mul = concatenate([inputs, attention_probs], output_shape=32, name='attention_mul', mode='mul')
+    attention_mul = merge([inputs, attention_probs], output_shape=32, name='attention_mul', mode='mul')
     # ATTENTION PART FINISHES HERE
 
     attention_mul = Dense(64)(attention_mul)
@@ -64,27 +64,26 @@ def Model(inputs,
         num_layers = 1,
         batch_size = 1,
         is_training=True,
-        scope='model_Attention'):
-    with tf.variable_scope(scope, 'model_Attention', [inputs, seq_len]) as sc:
+        scope='model1'):
+    with tf.variable_scope(scope, 'model1', [inputs, seq_len]) as sc:
         #N = 10000
         #inputs_1, outputs = get_data(N, num_classes)
 
         inputs_new = Input(shape=(2,))
         # ATTENTION PART STARTS HERE
         attention_probs = Dense(2, activation='softmax', name='attention_vec')(inputs_new)
-        #attention_mul = add([inputs_new, attention_probs], output_shape=32, name='attention_mul', mode='mul')
-        attention_mul = multiply([inputs_new, attention_probs])
+        print ("ATT::",attention_probs)
+        attention_mul = merge([inputs_new, attention_probs], output_shape=32, name='attention_mul', mode='mul')
         # ATTENTION PART FINISHES HERE
 
         attention_mul = Dense(64)(attention_mul)
         output = Dense(1, activation='sigmoid')(attention_mul)
-        #m = Model(input=[inputs], output=output)
-        m = Model([inputs_new], output)
+        m = Model(input=[inputs], output=output)
 
         m.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        #print(m.summary())
+        print(m.summary())
 
-        m.fit([inputs], outputs, epochs=10, batch_size=64, validation_split=0.5)
+        m.fit([inputs], outputs, epochs=20, batch_size=64, validation_split=0.5)
 
         testing_inputs_1, testing_outputs = get_data(1, seq_len)
 

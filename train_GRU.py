@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import tensorflow as tf
-import model1 
+import model_GRU 
 # DATA
 data_x1 = np.load("TEDLIUM_release1/test/sph/mfcc.npy")
 data_x2 = np.load("TEDLIUM_release1/test/sph/spec.npy")
@@ -34,7 +34,7 @@ num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 # Hyper-parameters
 num_epochs = 10000
 num_hidden = 100
-num_layers = 1
+num_layers = 3
 batch_size = 1
 
 num_examples = 1
@@ -60,7 +60,7 @@ def run_ctc():
 		seq_len = tf.placeholder(tf.int32, [None])
 		#seq_len=tf.placeholder(tf.int32)
 		#seq_len=1
-		logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+		logits = model_GRU.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
