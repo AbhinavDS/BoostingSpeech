@@ -10,8 +10,13 @@ data_x1 = np.transpose(data_x1, axes=[0, 2, 1])[0:1]
 data_x2 = np.transpose(data_x2, axes=[0, 2, 1])[0:1]
 data_y = data_y[0:1]
 
+SPACE_TOKEN = '<space>'
+SPACE_INDEX = 0
+FIRST_INDEX = ord('a') - 1 
+
 # Get sequence length
-data_y_len = np.zeros((data_y.shape[0],1), dtype=int)
+data_y_len = np.zeros((data_y.shape[0]), dtype=int)
+
 for i in range(len(data_y)):
 	for j in range(len(data_y[i])-1, -1, -1):
 		if data_y[i][j] != -1:
@@ -22,8 +27,9 @@ print (data_x1.shape, data_x2.shape, data_y.shape, data_y_len.shape)
 
 # Some configs
 num_features = data_x1.shape[-1]
-# Accounting the 0th index +  space + blank label = 28 characters
-num_classes = ord('z') - ord('a') + 1 + 1 + 1
+
+# Accounting the 0th index +  space + blank label + eos = 29 characters
+num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameters
 num_epochs = 10000
@@ -47,15 +53,15 @@ def run_ctc():
 
 		# Here we use sparse_placeholder that will generate a
 		# SparseTensor required by ctc_loss op.
-		targets = tf.placeholder(tf.int32)
+
+		targets = tf.sparse_placeholder(tf.int32)
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
-
-
+		#seq_len=tf.placeholder(tf.int32)
+		#seq_len=1
 		logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
-
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
 
@@ -74,7 +80,6 @@ def run_ctc():
 	def sparse_tuple_from(sequences, dtype=np.int32):
 		indices = []
 		values = []
-
 		for n, seq in enumerate(sequences):
 			indices.extend(zip([n] * len(seq), range(len(seq))))
 			values.extend(seq)
@@ -82,21 +87,22 @@ def run_ctc():
 		indices = np.asarray(indices, dtype=np.int64)
 		values = np.asarray(values, dtype=dtype)
 		shape = np.asarray([len(sequences), np.asarray(indices).max(0)[1] + 1], dtype=np.int64)
-		return (indices, values, shape)
+		return (indices, values, shape) 
 
 	def next_training_batch():
 		global counter, total_len
 		counter += 1
 		counter %= total_len
 		target = data_y[counter:counter+1]
-		indices, values, shape = sparse_tuple_from(target)
-		# target = tf.SparseTensor(indices=indices, values=values, shape=shape) 
-		target = (indices, values, shape)
-		return data_x1[counter:counter+1], target, data_y_len[counter:counter+1], data_y[counter:counter+1]
+		target = sparse_tuple_from(target)
+
+		seq = data_y_len[counter:counter+1]
+		return data_x1[counter:counter+1], target, seq, data_y[counter:counter+1]
 
 	def next_testing_batch():
 		# for now testing and training on same
-		return next_training_batch()
+		a,b,c,d = next_training_batch()
+		return a,b,c,d,0
 
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
@@ -110,7 +116,8 @@ def run_ctc():
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len}
-				print (feed)
+
+				print ('FEED::', feed)
 
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * batch_size

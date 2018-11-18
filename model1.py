@@ -1,48 +1,50 @@
 import tensorflow as tf
 
 def Model(inputs,
-        seq_len,
-        num_classes=28,
-        num_hidden = 100,
-        num_layers = 1,
-        is_training=True,
-        scope='model1'):
-  with tf.variable_scope(scope, 'model1', [inputs, seq_len]) as sc:
-    ####### FROM THIS WILL BE MOVED TO MODEL1 #####################
-    # Defining the cell
-    # Can be:
-    #   tf.nn.rnn_cell.RNNCell
-    #   tf.nn.rnn_cell.GRUCell
-    cell = tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True)
+		seq_len,
+		num_classes=28,
+		num_hidden = 100,
+		num_layers = 1,
+		batch_size = 1,
+		is_training=True,
+		scope='model1'):
+	with tf.variable_scope(scope, 'model1', [inputs, seq_len]) as sc:
+		####### FROM THIS WILL BE MOVED TO MODEL1 #####################
+		# Defining the cell
+		# Can be:
+		#   tf.nn.rnn_cell.RNNCell
+		#   tf.nn.rnn_cell.GRUCell
 
-    # Stacking rnn cells
-    stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+		cell = tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True)
 
-    # The second output is the last state and we will no use that
-    outputs, _ = tf.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32)
+		# Stacking rnn cells
+		stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 
-    shape = tf.shape(inputs)
-    batch_s, max_time_steps = shape[0], shape[1]
+		# The second output is the last state and we will no use that
+		outputs, _ = tf.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32)
 
-    # Reshaping to apply the same weights over the timesteps
-    outputs = tf.reshape(outputs, [-1, num_hidden])
+		shape = tf.shape(inputs)
+		batch_s, max_time_steps = shape[0], shape[1]
 
-    # Truncated normal with mean 0 and stdev=0.1
-    # Tip: Try another initialization
-    # see https://www.tensorflow.org/versions/r0.9/api_docs/python/contrib.layers.html#initializers
-    W = tf.Variable(tf.truncated_normal([num_hidden, num_classes], stddev=0.1))
-    # Zero initialization
-    # Tip: Is tf.zeros_initializer the same?
-    b = tf.Variable(tf.constant(0., shape=[num_classes]))
+		# Reshaping to apply the same weights over the timesteps
+		outputs = tf.reshape(outputs, [-1, num_hidden])
 
-    # Doing the affine projection
-    logits = tf.matmul(outputs, W) + b
+		# Truncated normal with mean 0 and stdev=0.1
+		# Tip: Try another initialization
+		# see https://www.tensorflow.org/versions/r0.9/api_docs/python/contrib.layers.html#initializers
+		W = tf.Variable(tf.truncated_normal([num_hidden, num_classes], stddev=0.1))
+		# Zero initialization
+		# Tip: Is tf.zeros_initializer the same?
+		b = tf.Variable(tf.constant(0., shape=[num_classes]))
 
-    # Reshaping back to the original shape
-    logits = tf.reshape(logits, [batch_s, -1, num_classes])
+		# Doing the affine projection
+		logits = tf.matmul(outputs, W) + b
 
-    # Time major
-    logits = tf.transpose(logits, (1, 0, 2))
+		# Reshaping back to the original shape
+		logits = tf.reshape(logits, [batch_s, -1, num_classes])
 
-    ####### TILL THIS WILL BE MOVED TO MODEL1 #####################
-    return logits
+		# Time major
+		logits = tf.transpose(logits, (1, 0, 2))
+
+		####### TILL THIS WILL BE MOVED TO MODEL1 #####################
+		return logits
