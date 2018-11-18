@@ -1,7 +1,18 @@
 import time
 import numpy as np
 import tensorflow as tf
-import model1 
+import model1
+import argparse
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-n", "--Cell", required=True, help="name of the cell unit")
+#ap.add_argument("-h", "--num-hidden", required=True, help="number of hidden cell unit")
+#ap.add_argument("-l", "--num-layers", required=True, help="name of layers")
+#ap.add_argument("-e","--num-epochs",required=True, help="number of epochs")
+#ap.add_argument("-e","--feature",required=True, help="mfcc or spec")
+#ap.add_argument("-e","--lear",required=True, help="learning rate --0.00001")
+
+args = vars(ap.parse_args())
 # DATA
 data_x1 = np.load("TEDLIUM_release1/test/sph/mfcc.npy")
 data_x2 = np.load("TEDLIUM_release1/test/sph/spec.npy")
@@ -32,9 +43,9 @@ num_features = data_x1.shape[-1]
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameters
-num_epochs = 10000
-num_hidden = 100
-num_layers = 1
+num_epochs = 10000#args["num-epochs"]
+num_hidden = 1#args["num-hidden"]
+num_layers = 1#args["num-layers"]
 batch_size = 1
 
 num_examples = 1
@@ -60,7 +71,7 @@ def run_ctc():
 		seq_len = tf.placeholder(tf.int32, [None])
 		#seq_len=tf.placeholder(tf.int32)
 		#seq_len=1
-		logits = model1.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+		logits = model1.Model(args["Cell"],inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
@@ -106,6 +117,7 @@ def run_ctc():
 
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
+		writer = tf.summary.FileWriter("output", session.graph)
 
 		for curr_epoch in range(num_epochs):
 			train_cost = train_ler = 0
@@ -171,7 +183,7 @@ def run_ctc():
 
 			print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
-
+		writer.close()
 
 if __name__ == '__main__':
-	run_ctc()
+        run_ctc()
