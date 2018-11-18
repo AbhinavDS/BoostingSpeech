@@ -113,11 +113,12 @@ def run_ctc():
 
 			for batch in range(num_batches_per_epoch):
 				train_inputs, train_targets, train_seq_len, original = next_training_batch()
+				
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len}
 
-				print ('FEED::', feed)
+				# print ('FEED::', feed)
 
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * batch_size
@@ -131,8 +132,8 @@ def run_ctc():
 				# Replacing space label to space
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-				print('Original: %s' % original)
-				print('Decoded: %s' % str_decoded)
+				# print('Original: %s' % original)
+				# print('Decoded: %s' % str_decoded)
 
 			train_cost /= num_examples
 			train_ler /= num_examples
@@ -146,13 +147,22 @@ def run_ctc():
 
 			# Decoding
 			d = session.run(decoded[0], feed_dict=val_feed)
+			
+			if not curr_epoch:
+				val_original = ''.join([chr(x) for x in val_original[0] + FIRST_INDEX])
+				# Replacing blank label to none
+				val_original = val_original.replace(chr(ord('z') + 1), '')
+				# Replacing space label to space
+				val_original = val_original.replace(chr(ord('a') - 1), ' ')
+
+				print('Original val: %s' % val_original)
+			
 			str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
 			# Replacing blank label to none
 			str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
 			# Replacing space label to space
 			str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-			print('Original val: %s' % val_original)
 			print('Decoded val: %s' % str_decoded)
 
 			log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
