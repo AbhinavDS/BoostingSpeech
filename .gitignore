@@ -1,5 +1,5 @@
 TEDLIUM_release1/
-
+output/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

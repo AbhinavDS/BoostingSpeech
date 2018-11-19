@@ -7,24 +7,17 @@ def Model(inputs,
 		num_layers = 1,
 		batch_size = 1,
 		is_training=True,
-		scope='model_GRU'):
-	with tf.variable_scope(scope, 'model_GRU', [inputs, seq_len]) as sc:
-		####### FROM THIS WILL BE MOVED TO MODEL1 #####################
+		scope='model_lstm'):
+	with tf.variable_scope(scope, 'model_lstm', [inputs, seq_len]) as sc:
 		# Defining the cell
 		# Can be:
 		#   tf.nn.rnn_cell.RNNCell
 		#   tf.nn.rnn_cell.GRUCell
 
-		#cell = tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True)
-		#cell = tf.contrib.rnn.GRUCell(num_hidden)
-		cells = [tf.contrib.rnn.GRUCell(num_hidden) for n in range(num_layers)]
-		# Stacking rnn cells
-		
-		#stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+		cells = [tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True) for n in range(num_layers)]
 		stack = tf.contrib.rnn.MultiRNNCell(cells)
-		# The second output is the last state and we will no use that
 		outputs, _ = tf.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32)
-
+	
 		shape = tf.shape(inputs)
 		batch_s, max_time_steps = shape[0], shape[1]
 
@@ -48,5 +41,4 @@ def Model(inputs,
 		# Time major
 		logits = tf.transpose(logits, (1, 0, 2))
 
-		####### TILL THIS WILL BE MOVED TO MODEL1 #####################
 		return logits
