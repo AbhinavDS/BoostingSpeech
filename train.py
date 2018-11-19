@@ -51,9 +51,9 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameter
-num_epochs = 200#00#args["num-epochs"]
-num_hidden = 1#args["num-hidden"]
-num_layers = 1#args["num-layers"]
+num_epochs = 100 #10000 #args["num-epochs"]
+num_hidden = 1 #args["num-hidden"]
+num_layers = 1 #args["num-layers"]
 batch_size = 1
 
 train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
@@ -82,7 +82,7 @@ def run_ctc():
 
 		# optimizer = tf.train.AdamOptimizer().minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=0.0008, momentum=0.9).minimize(cost)
+		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-5, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
@@ -125,7 +125,8 @@ def run_ctc():
 		saver = tf.train.Saver()
 		
 		for curr_epoch in range(num_epochs):	
-			train_cost = train_ler = 0
+			train_cost = 0
+			train_ler = 0
 			start = time.time()
 			num_examples = 0
 			epoch_num = curr_epoch
@@ -151,9 +152,9 @@ def run_ctc():
 				num_examples += len(train_targets)
 				# print('Original: %s' % original)
 				# print('Decoded: %s' % str_decoded)
-				
+
 				# TO OVERFIT UNCOMMENT BELOW LINES
-				# break
+				break
 
 			train_cost /= num_examples
 			train_ler /= num_examples
