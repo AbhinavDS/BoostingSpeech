@@ -82,7 +82,7 @@ def run_ctc():
 
 		# optimizer = tf.train.AdamOptimizer().minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-5, momentum=0.9).minimize(cost)
+		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-6, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
