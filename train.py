@@ -52,7 +52,7 @@ num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameter
 num_epochs = 200#00#args["num-epochs"]
-num_hidden = 1#args["num-hidden"]
+num_hidden = 100#args["num-hidden"]
 num_layers = 1#args["num-layers"]
 batch_size = 1
 
