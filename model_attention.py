@@ -16,9 +16,9 @@ def make_attention_cell(dec_cell, rnn_size, enc_output, lengths):
     """Wraps the given cell with Bahdanau Attention.
     """
     print("dec_cell::",dec_cell," enc_output", enc_output)
+    print("rnn_size::",rnn_size," lengths", lengths)
     attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size,
                                                                memory=enc_output,
-                                                               memory_sequence_length=lengths,
                                                                name='BahdanauAttention')
 
     return tf.contrib.seq2seq.AttentionWrapper(cell=dec_cell,
@@ -35,7 +35,7 @@ def blstm(inputs,
     
     fw_cell = make_rnn_cell(n_hidden)
     bw_cell = make_rnn_cell(n_hidden)
-
+    print("type:",type(seq_len))
     (out_fw, out_bw), (state_fw, state_bw) = tf.nn.bidirectional_dynamic_rnn(
         cell_fw=fw_cell,
         cell_bw=bw_cell,
@@ -74,7 +74,8 @@ def Model(inputs,
         encoder_outputs, encoder_state = build_encoder(inputs, seq_len)
 
         # Decoder
-        outputs, _ = build_decoder(encoder_outputs,encoder_state,seq_len, num_hidden, num_layers)            
+        logits, _, _ = build_decoder(encoder_outputs,encoder_state,seq_len, num_hidden, num_layers)            
+        return logits
 
 def build_encoder(inputs, seq_len):
     
@@ -89,7 +90,7 @@ def build_encoder(inputs, seq_len):
         scope = 'pBLSTM' + str(n)
         (out_fw, out_bw), (state_fw, state_bw) = blstm(
             inputs,
-            seq_len,
+            15000,
             256,
             scope=scope,
             initial_state_fw=initial_state_fw,
@@ -122,12 +123,12 @@ def build_decoder(encoder_outputs, encoder_state, seq_len, num_hidden, num_layer
         cell, decoder_initial_state = build_decoder_cell(
             encoder_outputs,
             encoder_state,
-            55376,
+            seq_len,
             num_hidden,
             num_layers) #audio sequence length
 
         # Train
-        # if self.mode != 'INFER':
+        # if mode != 'INFER':
         char_ids = tf.placeholder(tf.int32,
                                        shape=[None, None],
                                        name='ids_target')
@@ -135,13 +136,13 @@ def build_decoder(encoder_outputs, encoder_state, seq_len, num_hidden, num_layer
                                     shape=[30+1, 300],
                                     dtype=tf.float32)
 
-        char_embedding = tf.nn.embedding_lookup(self.embedding,
+        char_embedding = tf.nn.embedding_lookup(embedding,
                                                 char_ids,
                                                 name='char_embedding')
         helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
-            inputs=self.char_embedding,
-            sequence_length=55376,
-            embedding=self.embedding,
+            inputs=char_embedding,
+            sequence_length=seq_len,
+            embedding=embedding,
             sampling_probability=0.5,
             time_major=False)
 
@@ -149,13 +150,13 @@ def build_decoder(encoder_outputs, encoder_state, seq_len, num_hidden, num_layer
         my_decoder = tf.contrib.seq2seq.BasicDecoder(cell,
                                                      helper,
                                                      decoder_initial_state,
-                                                     output_layer=self.output_layer)
+                                                     output_layer=output_layer)
 
         # Dynamic decoding
         outputs, final_context_state, _ = tf.contrib.seq2seq.dynamic_decode(
             my_decoder,
             output_time_major=False,
-            maximum_iterations=self.maximum_iterations,
+            maximum_iterations=800,
             swap_memory=False,
             impute_finished=True,
             scope=decoder_scope
@@ -167,33 +168,33 @@ def build_decoder(encoder_outputs, encoder_state, seq_len, num_hidden, num_layer
 
         # Inference
         # else:
-        #     start_tokens = tf.fill([self.batch_size], sos_id_2)
+        #     start_tokens = tf.fill([batch_size], sos_id_2)
         #     end_token = eos_id_2
 
         #     # Beam search
-        #     if self.beam_width > 0:
+        #     if beam_width > 0:
         #         my_decoder = tf.contrib.seq2seq.BeamSearchDecoder(
         #             cell=cell,
-        #             embedding=self.embedding,
+        #             embedding=embedding,
         #             start_tokens=start_tokens,
         #             end_token=end_token,
         #             initial_state=decoder_initial_state,
-        #             beam_width=self.beam_width,
-        #             output_layer=self.output_layer,
+        #             beam_width=beam_width,
+        #             output_layer=output_layer,
         #         )
 
         #     # Greedy
         #     else:
-        #         helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(self.embedding,
+        #         helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding,
         #                                                           start_tokens,
         #                                                           end_token)
 
         #         my_decoder = tf.contrib.seq2seq.BasicDecoder(cell,
         #                                                      helper,
         #                                                      decoder_initial_state,
-        #                                                      output_layer=self.output_layer)
-        #     if self.inference_targets:
-        #         maximum_iterations = self.maximum_iterations
+        #                                                      output_layer=output_layer)
+        #     if inference_targets:
+        #         maximum_iterations = maximum_iterations
         #     else:
         #         maximum_iterations = None
 
@@ -206,7 +207,7 @@ def build_decoder(encoder_outputs, encoder_state, seq_len, num_hidden, num_layer
         #         swap_memory=False,
         #         scope=decoder_scope)
 
-        #     if self.beam_width > 0:
+        #     if beam_width > 0:
         #         logits = tf.no_op()
         #         sample_id = outputs.predicted_ids
         #     else:
@@ -223,32 +224,32 @@ def build_decoder_cell(encoder_outputs, encoder_state,
 
     memory = encoder_outputs
 
-    # if self.mode == 'INFER' and self.beam_width > 0:
+    # if mode == 'INFER' and beam_width > 0:
     #     memory = tf.contrib.seq2seq.tile_batch(memory,
-    #                                            multiplier=self.beam_width)
+    #                                            multiplier=beam_width)
     #     encoder_state = tf.contrib.seq2seq.tile_batch(encoder_state,
-    #                                                   multiplier=self.beam_width)
+    #                                                   multiplier=beam_width)
     #     audio_sequence_lengths = tf.contrib.seq2seq.tile_batch(audio_sequence_lengths,
-    #                                                            multiplier=self.beam_width)
-    #     batch_size = self.batch_size * self.beam_width
+    #                                                            multiplier=beam_width)
+    #     batch_size = batch_size * beam_width
 
     # else:
     # batch_size = 1
 
-    # if self.num_layers_decoder is not None:
+    # if num_layers_decoder is not None:
     # lstm_cell = [tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True) for n in range(num_layers)]
 
     # else:
-    #     lstm_cell = self.make_rnn_cell(self.rnn_size_decoder)
+    #     lstm_cell = make_rnn_cell(rnn_size_decoder)
 
     # attention cell
     lstm_cell = tf.nn.rnn_cell.MultiRNNCell(
-                [make_rnn_cell(256) for _ in
+                [make_rnn_cell(512) for _ in
                  range(1)])
     cell = make_attention_cell(lstm_cell,
-                                    256,
+                                    512,
                                     memory,
-                                    55376) # audio sequence length
+                                    audio_sequence_lengths) 
 
     decoder_initial_state = cell.zero_state(1, tf.float32).clone(cell_state=encoder_state)
 
