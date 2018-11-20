@@ -153,7 +153,7 @@ def run_ctc():
 				# print('Decoded: %s' % str_decoded)
 				
 				# TO OVERFIT UNCOMMENT BELOW LINES
-				# break
+			        break
 
 			train_cost /= num_examples
 			train_ler /= num_examples

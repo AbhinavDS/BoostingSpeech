@@ -128,11 +128,11 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						cur_sequence=[]
 						yield data
 			# 		# TO OVERFIT UNCOMMENT BELOW LINES
-			# 		if count >= 1:
-			# 			break
-			# if count >= 1:
-			# 	count = 0
-			# 	break
+		         		if count >= 1:
+		         			break
+		        if count >= 1:
+			    count = 0
+                            break
 
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	
@@ -140,7 +140,7 @@ def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, ep
 		mfcc[i] = pad_sequences(mfcc[i], maxlen=maxlen_mfcc, dtype='float', padding='post', truncating='post')
 		spec[i] = pad_sequences(spec[i], maxlen=maxlen_spec, dtype='float', padding='post', truncating='post')
 	seq_padded = pad_sequences(seq, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
-	# seq_padded = seq
+	#seq_padded = seq
 	
 	# Get sequence length
 	seq_len = np.zeros((len(seq_padded)), dtype=int)
