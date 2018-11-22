@@ -78,11 +78,12 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 	cur_sequence=[]
 	count = 0
 	epoch = -1
-	max_files = 1
+	max_files = 2
 	while True:
 		epoch += 1
 		file_counter = 0
 		for filename in os.listdir(text_dir):
+			print (filename)
 			if file_counter >= max_files:
 				break
 			file_counter += 1
@@ -115,7 +116,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				time_seq = list(map(operator.mul, time_seq, [sr]*len(time_seq)))
 				time_seq = list(map(int, time_seq))
 				time_seq.append(y.shape[0])
-				for i in range(0,len(time_seq)-1):
+				for i in range(4,len(time_seq)-1):
 					time1 = time_seq[i]
 					time2 = time_seq[i+1]-1
 					speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)

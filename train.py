@@ -54,7 +54,7 @@ num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 num_epochs = 200#00#args["num-epochs"]
 num_hidden = 100#args["num-hidden"]
 num_layers = 1#args["num-layers"]
-batch_size = 1
+batch_size = 128
 
 train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
 valid_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
@@ -82,7 +82,7 @@ def run_ctc():
 
 		# optimizer = tf.train.AdamOptimizer().minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-6, momentum=0.9).minimize(cost)
+		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-4, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
@@ -124,13 +124,15 @@ def run_ctc():
 		# Add ops to save and restore all the variables.
 		saver = tf.train.Saver()
 		
-		for curr_epoch in range(num_epochs):	
+		for curr_epoch in range(num_epochs):
+			print ("Starting Epoch %i" % curr_epoch)	
 			train_cost = 0
 			train_ler = 0
 			start = time.time()
 			num_examples = 0
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
+				print (num_examples)
 				train_inputs, train_targets, train_seq_len, original, epoch_num = next_training_batch()
 				feed = {inputs: train_inputs,
 						targets: train_targets,
@@ -149,7 +151,7 @@ def run_ctc():
 				# Replacing space label to space
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-				num_examples += len(train_targets)
+				num_examples += len(original)
 				# print('Original: %s' % original)
 				# print('Decoded: %s' % str_decoded)
 
