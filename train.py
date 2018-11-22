@@ -41,8 +41,14 @@ SPACE_INDEX = 0
 FIRST_INDEX = ord('a') - 1 
 
 
-# Some configs
+# Hyper-parameter
+num_epochs = 200#00#args["num-epochs"]
+num_hidden = 100#args["num-hidden"]
+num_layers = 1#args["num-layers"]
+batch_size = 128
+learning_rate = 1e-4
 feature = 'spec'
+
 if feature == 'spec':
 	num_features = 128
 else:
@@ -51,11 +57,6 @@ else:
 # Accounting the 0th index +  space + blank label + eos = 29 characters
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
-# Hyper-parameter
-num_epochs = 200#00#args["num-epochs"]
-num_hidden = 100#args["num-hidden"]
-num_layers = 1#args["num-layers"]
-batch_size = 1
 
 train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
 valid_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
@@ -89,7 +90,7 @@ def run_ctc():
 
 		# optimizer = tf.train.AdamOptimizer().minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=0.0008, momentum=0.9).minimize(cost)
+		optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
@@ -129,15 +130,18 @@ def run_ctc():
 		tf.global_variables_initializer().run()
 		writer = tf.summary.FileWriter("output", session.graph)
 		# Add ops to save and restore all the variables.
-		saver = tf.train.Saver()
 		
-		for curr_epoch in range(num_epochs):	
-			train_cost = train_ler = 0
+		for curr_epoch in range(num_epochs):
+			print ("Starting Epoch %i" % curr_epoch)	
+			train_cost = 0
+			train_ler = 0
 			start = time.time()
 			num_examples = 0
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
-				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
+				print ("Total Examples seen: ",num_examples)
+				train_inputs, train_targets, train_seq_len, original, epoch_num = next_training_batch()
+				# train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
 				feed = {inputs: train_inputs,
 						targets: train_targets,
 						seq_len: train_seq_len,
@@ -146,8 +150,8 @@ def run_ctc():
 
 				
 				batch_cost, _ = session.run([cost, optimizer], feed)
-				train_cost += batch_cost * batch_size
-				train_ler += session.run(ler, feed_dict=feed) * batch_size
+				train_cost += batch_cost * len(original)
+				train_ler += session.run(ler, feed_dict=feed) * len(original)
 
 				# Decoding
 				d = session.run(decoded[0], feed_dict=feed)
@@ -157,13 +161,13 @@ def run_ctc():
 				# Replacing space label to space
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-				num_examples += len(train_targets)
+				num_examples += len(original)
 				# print('Original: %s' % original)
 				# print('Decoded: %s' % str_decoded)
-				
-				# TO OVERFIT UNCOMMENT BELOW LINES
-				break
 
+				# TO OVERFIT UNCOMMENT BELOW LINES
+
+				# break
 			train_cost /= num_examples
 			train_ler /= num_examples
 
@@ -202,9 +206,11 @@ def run_ctc():
 
 			if val_ler < best_ler:
 				best_ler = val_ler
+				saver = tf.train.Saver()
 				save_path = saver.save(session, "models/model_"+cell_name+"_"+str(curr_epoch)+".ckpt")
 				print("Better model found Model saved in path: %s" % save_path)
-
+			print ("Total Examples seen: ",num_examples)
+				
 			print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
 		writer.close()

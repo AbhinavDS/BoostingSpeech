@@ -70,7 +70,7 @@ def text_to_int_sequence(text):
 	return int_sequence
 
 
-def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, maxlen_mfcc=15000, maxlen_spec=15000, maxlen_seq=800):
+def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800):
 	assert feature in ['spec', 'mfcc']
 	current_batch = 0
 	mfcc=[]
@@ -78,9 +78,17 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 	cur_sequence=[]
 	count = 0
 	epoch = -1
+	max_files = 2
+	all_files =  os.listdir(text_dir)
+	all_files.sort()
 	while True:
 		epoch += 1
-		for filename in os.listdir(text_dir):
+		file_counter = 0
+		for filename in all_files:
+			# if file_counter >= max_files:
+			# 	break
+			# print (filename)
+			file_counter += 1
 			if filename.endswith(".stm"): 
 				text_path_name =(os.path.join(text_dir, filename))
 				speech_path_name=(os.path.join(speech_dir, filename[:-4]+".wav"))
@@ -110,7 +118,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				time_seq = list(map(operator.mul, time_seq, [sr]*len(time_seq)))
 				time_seq = list(map(int, time_seq))
 				time_seq.append(y.shape[0])
-				for i in range(4,len(time_seq)-1):
+				for i in range(1,len(time_seq)-2):
 					time1 = time_seq[i]
 					time2 = time_seq[i+1]-1
 					speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)
@@ -127,13 +135,21 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						spec=[]
 						cur_sequence=[]
 						yield data
-					# TO OVERFIT UNCOMMENT BELOW LINES
-					if count >= 1:
-						break
-				if count >= 1:
-					count = 0
-					break
+			# 		# TO OVERFIT UNCOMMENT BELOW LINES
+			# 		if count >= 1:
+			# 			break
+			# if count >= 1:
+			# 	count = 0
+			# 	break
 
+		# To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
+		if (len(mfcc) > 0):
+			current_batch = 0
+			data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
+			mfcc=[]
+			spec=[]
+			cur_sequence=[]
+			yield data
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	
 	input_length_mfcc = []
