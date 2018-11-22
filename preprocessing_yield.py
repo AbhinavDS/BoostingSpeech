@@ -70,7 +70,7 @@ def text_to_int_sequence(text):
 	return int_sequence
 
 
-def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, maxlen_mfcc=15000, maxlen_spec=15000, maxlen_seq=800):
+def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800):
 	assert feature in ['spec', 'mfcc']
 	current_batch = 0
 	mfcc=[]
@@ -79,13 +79,15 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 	count = 0
 	epoch = -1
 	max_files = 2
+	all_files =  os.listdir(text_dir)
+	all_files.sort()
 	while True:
 		epoch += 1
 		file_counter = 0
-		for filename in os.listdir(text_dir):
-			print (filename)
-			if file_counter >= max_files:
-				break
+		for filename in all_files:
+			# if file_counter >= max_files:
+			# 	break
+			# print (filename)
 			file_counter += 1
 			if filename.endswith(".stm"): 
 				text_path_name =(os.path.join(text_dir, filename))
@@ -116,7 +118,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				time_seq = list(map(operator.mul, time_seq, [sr]*len(time_seq)))
 				time_seq = list(map(int, time_seq))
 				time_seq.append(y.shape[0])
-				for i in range(4,len(time_seq)-1):
+				for i in range(1,len(time_seq)-2):
 					time1 = time_seq[i]
 					time2 = time_seq[i+1]-1
 					speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)
