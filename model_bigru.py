@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def Model(cell_name,inputs,
+def Model(inputs,
 		seq_len,
 		num_classes=28,
 		num_hidden = 100,

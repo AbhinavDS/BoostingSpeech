@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def Model(cell_name,inputs,
+def Model(inputs,
 		seq_len,
 		num_classes=28,
 		num_hidden = 100,
@@ -16,7 +16,7 @@ def Model(cell_name,inputs,
 
 		fw_cells = cells = [tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True) for n in range(num_layers)]
 		bw_cells = cells = [tf.contrib.rnn.LSTMCell(num_hidden, state_is_tuple=True) for n in range(num_layers)]
-        #stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+        	#stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 		stack_fw = tf.contrib.rnn.MultiRNNCell(fw_cells)
 		stack_bw = tf.contrib.rnn.MultiRNNCell(bw_cells)
 		# The second output is the last state and we will no use that

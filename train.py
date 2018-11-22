@@ -51,9 +51,9 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 # Hyper-parameter
-num_epochs = 100 #10000 #args["num-epochs"]
-num_hidden = 1 #args["num-hidden"]
-num_layers = 1 #args["num-layers"]
+num_epochs = 200#00#args["num-epochs"]
+num_hidden = 100#args["num-hidden"]
+num_layers = 1#args["num-layers"]
 batch_size = 1
 
 train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
@@ -154,7 +154,7 @@ def run_ctc():
 				# print('Decoded: %s' % str_decoded)
 
 				# TO OVERFIT UNCOMMENT BELOW LINES
-				break
+				# break
 
 			train_cost /= num_examples
 			train_ler /= num_examples
