@@ -135,21 +135,21 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						spec=[]
 						cur_sequence=[]
 						yield data
-			# 		# TO OVERFIT UNCOMMENT BELOW LINES
-			# 		if count >= 1:
-			# 			break
-			# if count >= 1:
-			# 	count = 0
-			# 	break
+					# TO OVERFIT UNCOMMENT BELOW LINES
+					if count >= 1:
+						break
+			if count >= 1:
+				count = 0
+				break
 
-		# To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
-		if (len(mfcc) > 0):
-			current_batch = 0
-			data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
-			mfcc=[]
-			spec=[]
-			cur_sequence=[]
-			yield data
+		# # To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
+		# if (len(mfcc) > 0):
+		# 	current_batch = 0
+		# 	data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
+		# 	mfcc=[]
+		# 	spec=[]
+		# 	cur_sequence=[]
+		# 	yield data
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	
 	input_length_mfcc = []

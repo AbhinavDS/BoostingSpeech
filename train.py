@@ -75,11 +75,13 @@ def run_ctc():
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
-		input_sequence_length = tf.placeholder(tf.int32, [None])
-		char_ids = tf.placeholder(tf.int32,
+
+		if cell_name == 'ATTN':
+			input_sequence_length = tf.placeholder(tf.int32, [None])
+			char_ids = tf.placeholder(tf.int32,
                                        shape=[None, None],
                                        name='ids_target')
-		if cell_name == 'ATTN':
+		
 			maximum_iterations = 100
 			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		else:
@@ -140,13 +142,15 @@ def run_ctc():
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
 				print ("Total Examples seen: ",num_examples)
-				train_inputs, train_targets, train_seq_len, original, epoch_num = next_training_batch()
-				# train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
+				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
 				feed = {inputs: train_inputs,
 						targets: train_targets,
-						seq_len: train_seq_len,
-						input_sequence_length: train_inputs_length,
-						char_ids: char_map_str}
+						seq_len: train_seq_len}
+
+				if cell_name == "ATTN":
+					feed[input_sequence_length] = train_inputs_length
+					feed[char_ids] = char_map_str
+
 
 				
 				batch_cost, _ = session.run([cost, optimizer], feed)
@@ -171,12 +175,13 @@ def run_ctc():
 			train_cost /= num_examples
 			train_ler /= num_examples
 
-			val_inputs, val_targets, val_seq_len, val_original, val_input_length, random_shift, char_map_str = next_validation_batch()
+			val_inputs, val_targets, val_seq_len, val_original, val_inputs_length, random_shift, char_map_str = next_validation_batch()
 			val_feed = {inputs: val_inputs,
 						targets: val_targets,
-						seq_len: val_seq_len,
-						input_sequence_length: val_input_length,
-						char_ids: char_map_str}
+						seq_len: val_seq_len}
+			if cell_name == "ATTN":
+				val_feed[input_sequence_length] = val_inputs_length
+				val_feed[char_ids] = char_map_str
 
 			val_cost, val_ler = session.run([cost, ler], feed_dict=val_feed)
 
