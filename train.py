@@ -45,7 +45,7 @@ num_epochs = 200#00#args["num-epochs"]
 num_hidden = 100#args["num-hidden"]
 num_layers = 1#args["num-layers"]
 batch_size = 128
-learning_rate = 1e-3
+learning_rate = 1e-4
 feature = 'spec'
 
 if feature == 'spec':
@@ -140,8 +140,8 @@ def run_ctc():
 
 				
 				batch_cost, _ = session.run([cost, optimizer], feed)
-				train_cost += batch_cost * batch_size
-				train_ler += session.run(ler, feed_dict=feed) * batch_size
+				train_cost += batch_cost * len(original)
+				train_ler += session.run(ler, feed_dict=feed) * len(original)
 
 				# Decoding
 				d = session.run(decoded[0], feed_dict=feed)
@@ -197,7 +197,8 @@ def run_ctc():
 				saver = tf.train.Saver()
 				save_path = saver.save(session, "models/model_"+cell_name+"_"+str(curr_epoch)+".ckpt")
 				print("Better model found Model saved in path: %s" % save_path)
-
+			print ("Total Examples seen: ",num_examples)
+				
 			print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
 		writer.close()
