@@ -49,13 +49,13 @@ _ 28
 
 char_map = {}
 index_map = {}
-
 for line in char_map_str.strip().split('\n'):
 	ch, index = line.split()
 	char_map[ch] = int(index)
 	index_map[int(index)] = ch
-
 index_map[0] = ' '
+
+# character_map = np.array([char_map.items()], dtype=[('num', 'U10'), ('char', 'U10')])
 
 def text_to_int_sequence(text):
 	""" Use a character map and convert text to an integer sequence """
@@ -127,18 +127,22 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						spec=[]
 						cur_sequence=[]
 						yield data
-			# 		# TO OVERFIT UNCOMMENT BELOW LINES
-		         		if count >= 1:
-		         			break
-		        if count >= 1:
-			    count = 0
-                            break
+					# TO OVERFIT UNCOMMENT BELOW LINES
+					if count >= 1:
+						break
+				if count >= 1:
+					count = 0
+					break
 
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	
+	input_length_mfcc = []
+	input_length_spec = []
 	for i in range(len(mfcc)):
 		mfcc[i] = pad_sequences(mfcc[i], maxlen=maxlen_mfcc, dtype='float', padding='post', truncating='post')
 		spec[i] = pad_sequences(spec[i], maxlen=maxlen_spec, dtype='float', padding='post', truncating='post')
+		input_length_mfcc.append(len(mfcc[i]))
+		input_length_spec.append(len(spec[i]))
 	seq_padded = pad_sequences(seq, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
 	#seq_padded = seq
 	
@@ -157,6 +161,6 @@ def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, ep
 	# print ("labels::", seq_padded.shape)
 
 	if feature =='spec':
-		return (spec, seq_padded, seq_len, epoch)
+		return (spec, seq_padded, seq_len, epoch, input_length_spec, char_map)
 	else:
-		return (mfcc, seq_padded, seq_len, epoch)
+		return (mfcc, seq_padded, seq_len, epoch, input_length_mfcc, char_map)

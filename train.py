@@ -4,6 +4,7 @@ import tensorflow as tf
 from preprocessing_yield import data_generator
 
 import argparse
+import itertools
 
 ap = argparse.ArgumentParser()
 list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
@@ -73,9 +74,15 @@ def run_ctc():
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
-		#seq_len=tf.placeholder(tf.int32)
-		#seq_len=1
-		logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+		input_sequence_length = tf.placeholder(tf.int32, [None])
+		char_ids = tf.placeholder(tf.int32,
+                                       shape=[None, None],
+                                       name='ids_target')
+		if cell_name == 'ATTN':
+			maximum_iterations = 100
+			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+		else:
+			logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
@@ -107,15 +114,15 @@ def run_ctc():
 
 	def next_training_batch():
 		global train_data_gen
-		data_x, data_y, len_y, epoch_num = next(train_data_gen)
+		data_x, data_y, len_y, epoch_num, len_x, char_map_str = next(train_data_gen)
 		target = sparse_tuple_from(data_y)
-		return data_x, target, len_y, data_y, epoch_num
+		return data_x, target, len_y, data_y, epoch_num, len_x, char_map_str
 
 	def next_validation_batch():
 		global valid_data_gen
-		data_x, data_y, len_y, _ = next(valid_data_gen)
+		data_x, data_y, len_y, len_x, char_map_str, _ = next(valid_data_gen)
 		target = sparse_tuple_from(data_y)
-		return data_x, target, len_y, data_y, 0
+		return data_x, target, len_y, data_y, len_x, 0, char_map_str
 
 	best_ler = 2.0
 	with tf.Session(graph=graph) as session:
@@ -130,10 +137,12 @@ def run_ctc():
 			num_examples = 0
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
-				train_inputs, train_targets, train_seq_len, original, epoch_num = next_training_batch()
+				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
 				feed = {inputs: train_inputs,
 						targets: train_targets,
-						seq_len: train_seq_len}
+						seq_len: train_seq_len,
+						input_sequence_length: train_inputs_length,
+						char_ids: char_map_str}
 
 				
 				batch_cost, _ = session.run([cost, optimizer], feed)
@@ -153,15 +162,17 @@ def run_ctc():
 				# print('Decoded: %s' % str_decoded)
 				
 				# TO OVERFIT UNCOMMENT BELOW LINES
-			        break
+				break
 
 			train_cost /= num_examples
 			train_ler /= num_examples
 
-			val_inputs, val_targets, val_seq_len, val_original, random_shift = next_validation_batch()
+			val_inputs, val_targets, val_seq_len, val_original, val_input_length, random_shift, char_map_str = next_validation_batch()
 			val_feed = {inputs: val_inputs,
 						targets: val_targets,
-						seq_len: val_seq_len}
+						seq_len: val_seq_len,
+						input_sequence_length: val_input_length,
+						char_ids: char_map_str}
 
 			val_cost, val_ler = session.run([cost, ler], feed_dict=val_feed)
 

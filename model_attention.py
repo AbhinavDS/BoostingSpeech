@@ -36,7 +36,6 @@ def blstm(inputs,
     
     fw_cell = make_rnn_cell(n_hidden)
     bw_cell = make_rnn_cell(n_hidden)
-    print("type:",type(seq_len))
     (out_fw, out_bw), (state_fw, state_bw) = tf.nn.bidirectional_dynamic_rnn(
         cell_fw=fw_cell,
         cell_bw=bw_cell,
@@ -65,8 +64,8 @@ def reshape_pyramidal(outputs, sequence_length):
 def Model(inputs,
     seq_len,
     input_sequence_length,
-    char_ids,
     maximum_iterations,
+    char2ind,
     num_classes=28,
     num_hidden = 100,
     num_layers = 1,
@@ -75,15 +74,15 @@ def Model(inputs,
     num_encoder_layers = 1,
     num_decoder_layers = 1,
     scope='model_attention'):
-    with tf.variable_scope(scope, 'model_attention', [inputs, seq_len]) as sc:
+    with tf.variable_scope(scope, 'model_attention', [inputs, input_sequence_length]) as sc:
         # Encoder
-        encoder_outputs, encoder_state = build_encoder(inputs, seq_len, num_encoder_layers)
+        encoder_outputs, encoder_state = build_encoder(inputs, input_sequence_length, num_encoder_layers)
 
         # Decoder
-        logits, _, _ = build_decoder(encoder_outputs,encoder_state,num_classes, num_decoder_layers, maximum_iterations)            
+        logits, _, _ = build_decoder(encoder_outputs,encoder_state, input_sequence_length, char2ind, batch_size, num_classes, num_decoder_layers, maximum_iterations)            
         return logits
 
-def build_encoder(inputs, seq_len, input_sequence_length, num_encoder_layers):
+def build_encoder(inputs, input_sequence_length, num_encoder_layers):
     
     # Pyramidal bidirectional LSTM(s)
 
@@ -118,9 +117,10 @@ def build_encoder(inputs, seq_len, input_sequence_length, num_encoder_layers):
 
 
 
-def build_decoder(encoder_outputs, encoder_state, num_classes, num_decoder_layers,maximum_iterations):
+def build_decoder(encoder_outputs, encoder_state, input_sequence_length, char2ind, batch_size, num_classes, num_decoder_layers,maximum_iterations):
 
-    out_layer = Dense(num_classes+1, name='output_projection')
+    vocab_size = num_classes
+    out_layer = Dense(vocab_size, name='output_projection')
 
     # Decoder.
     with tf.variable_scope("decoder") as decoder_scope:
@@ -138,7 +138,7 @@ def build_decoder(encoder_outputs, encoder_state, num_classes, num_decoder_layer
                                        shape=[None, None],
                                        name='ids_target')
         embedding = tf.get_variable('embedding',
-                                    shape=[num_classes+1, 2], # embeddings dimension I have given 2
+                                    shape=[vocab_size, 300], # embeddings dimension I have given 2
                                     dtype=tf.float32)
 
 
@@ -151,7 +151,7 @@ def build_decoder(encoder_outputs, encoder_state, num_classes, num_decoder_layer
 
         helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
             inputs=char_embedding,
-            sequence_length=num_classes,
+            sequence_length=input_sequence_length,
             embedding=embedding,
             sampling_probability=0.5,
             time_major=False)
