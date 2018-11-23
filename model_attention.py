@@ -65,7 +65,7 @@ def Model(inputs,
     seq_len,
     input_sequence_length,
     maximum_iterations,
-    char2ind,
+    char_ids,
     num_classes=28,
     num_hidden = 100,
     num_layers = 1,
@@ -79,7 +79,7 @@ def Model(inputs,
         encoder_outputs, encoder_state = build_encoder(inputs, input_sequence_length, num_encoder_layers)
 
         # Decoder
-        logits, _, _ = build_decoder(encoder_outputs,encoder_state, input_sequence_length, char2ind, batch_size, num_classes, num_decoder_layers, maximum_iterations)            
+        logits, _, _ = build_decoder(encoder_outputs,encoder_state, input_sequence_length, char_ids, batch_size, num_classes, num_decoder_layers, maximum_iterations)            
         return logits
 
 def build_encoder(inputs, input_sequence_length, num_encoder_layers):
@@ -117,7 +117,7 @@ def build_encoder(inputs, input_sequence_length, num_encoder_layers):
 
 
 
-def build_decoder(encoder_outputs, encoder_state, input_sequence_length, char2ind, batch_size, num_classes, num_decoder_layers,maximum_iterations):
+def build_decoder(encoder_outputs, encoder_state, input_sequence_length, char_ids, batch_size, num_classes, num_decoder_layers,maximum_iterations):
 
     vocab_size = num_classes
     out_layer = Dense(vocab_size, name='output_projection')
@@ -134,9 +134,9 @@ def build_decoder(encoder_outputs, encoder_state, input_sequence_length, char2in
 
         # Train
         # if mode != 'INFER':
-        char_ids = tf.placeholder(tf.int32,
-                                       shape=[None, None],
-                                       name='ids_target')
+        # char_ids = tf.placeholder(tf.int32,
+        #                                shape=[None, None],
+        #                                name='ids_target')
         embedding = tf.get_variable('embedding',
                                     shape=[vocab_size, 300], # embeddings dimension I have given 2
                                     dtype=tf.float32)

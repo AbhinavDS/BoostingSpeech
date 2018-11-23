@@ -83,7 +83,7 @@ def run_ctc():
                                        name='ids_target')
 		
 			maximum_iterations = 100
-			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes+1, num_hidden=num_hidden, num_layers=num_layers)
 		else:
 			logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
@@ -117,15 +117,16 @@ def run_ctc():
 
 	def next_training_batch():
 		global train_data_gen
-		data_x, data_y, len_y, epoch_num, len_x, char_map_str = next(train_data_gen)
+		data_x, data_y, len_y, epoch_num, len_x, unpadded_data_y = next(train_data_gen)
 		target = sparse_tuple_from(data_y)
-		return data_x, target, len_y, data_y, epoch_num, len_x, char_map_str
+		return data_x, target, len_y, data_y, epoch_num, len_x, unpadded_data_y
 
 	def next_validation_batch():
 		global valid_data_gen
-		data_x, data_y, len_y, len_x, char_map_str, _ = next(valid_data_gen)
+		data_x, data_y, len_y, _, len_x, unpadded_data_y = next(valid_data_gen)
+
 		target = sparse_tuple_from(data_y)
-		return data_x, target, len_y, data_y, len_x, 0, char_map_str
+		return data_x, target, len_y, data_y, len_x, 0, unpadded_data_y
 
 	best_ler = 2.0
 	with tf.Session(graph=graph) as session:
@@ -170,8 +171,8 @@ def run_ctc():
 				# print('Decoded: %s' % str_decoded)
 
 				# TO OVERFIT UNCOMMENT BELOW LINES
-
 				# break
+
 			train_cost /= num_examples
 			train_ler /= num_examples
 
