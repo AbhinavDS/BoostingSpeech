@@ -70,7 +70,7 @@ def text_to_int_sequence(text):
 	return int_sequence
 
 
-def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800):
+def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800):
 	assert feature in ['spec', 'mfcc']
 	current_batch = 0
 	mfcc=[]
@@ -135,15 +135,15 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						spec=[]
 						cur_sequence=[]
 						yield data
-			# 		# TO OVERFIT UNCOMMENT BELOW LINES
-			# 		if count >= 1:
-			# 			break
-			# if count >= 1:
-			# 	count = 0
-			# 	break
+
+					if overfit and count >= 1:
+						break
+			if overfit and count >= 1:
+				count = 0
+				break
 
 		# To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
-		if (len(mfcc) > 0):
+		if (not overfit) and (len(mfcc) > 0):
 			current_batch = 0
 			data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
 			mfcc=[]

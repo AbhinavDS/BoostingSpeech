@@ -1,4 +1,5 @@
 import time
+import os
 import numpy as np
 import tensorflow as tf
 from preprocessing_yield import data_generator
@@ -9,31 +10,49 @@ import itertools
 ap = argparse.ArgumentParser()
 list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
 ap.add_argument("-n", "--cell", required=True, help="name of the cell unit",  choices=list_of_choices)
+ap.add_argument("-f","--feature", nargs='?', help="mfcc or spec", default="spec", choices=["mfcc", "spec"])
 ap.add_argument("-ckpt", "--checkpoint", nargs='?', default="", help="path of checkpoint")
-#ap.add_argument("-h", "--num-hidden", required=True, help="number of hidden cell unit")
-#ap.add_argument("-l", "--num-layers", required=True, help="name of layers")
-#ap.add_argument("-e","--num-epochs",required=True, help="number of epochs")
-#ap.add_argument("-e","--feature",required=True, help="mfcc or spec")
-#ap.add_argument("-e","--lear",required=True, help="learning rate --0.00001")
+ap.add_argument("-log", "--log_file", required=True, default="out.log", help="path of log_file")
+ap.add_argument("-dev", "--dev_set",  nargs='?', default="dev", help="path of dev files")
+ap.add_argument("-train", "--train_set", nargs='?', default="train", help="path of train files")
+ap.add_argument("-ne", "--num_epochs", nargs='?', type=int, default=2000, help="number of epochs")
+ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
+ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=5, help="name of layers")
+ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
+ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.00001")
+ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='overfit', help='Set a switch to true')
 
 args = vars(ap.parse_args())
 
+if os.path.exists(args["log_file"]):
+	os.remove(args["log_file"])
+
+def log_print(string):
+	log_file = args["log_file"]
+	f = open(log_file,"a")
+	f.write(string+"\n")
+	f.close()
+
+args_print = "ARGS::\n"
+for key in args.keys():
+	args_print += str(key)+"::"+str(args[key])+"\n"
+log_print(args_print)
 # select model
 cell_name = args["cell"]
 if cell_name == 'LSTM':
-	print ('Using LSTM cells')
+	log_print ('Using LSTM cells')
 	import model_lstm as model
 elif cell_name == 'GRU':
-	print ('Using GRU cells')
+	log_print ('Using GRU cells')
 	import model_gru as model
 elif cell_name == 'BILSTM':
-	print ('Using Bi-LSTM cells')
+	log_print ('Using Bi-LSTM cells')
 	import model_bilstm as model
 elif cell_name == 'BIGRU':
-	print ('Using Bi-GRU cells')
+	log_print ('Using Bi-GRU cells')
 	import model_bigru as model
 elif cell_name == 'ATTN':
-	print ('using Attention')
+	log_print ('using Attention')
 	import model_attention as model
 
 
@@ -43,12 +62,13 @@ FIRST_INDEX = ord('a') - 1
 
 
 # Hyper-parameter
-num_epochs = 200#00#args["num-epochs"]
-num_hidden = 100#args["num-hidden"]
-num_layers = 1#args["num-layers"]
-batch_size = 128
-learning_rate = 1e-4
-feature = 'spec'
+num_epochs = args["num_epochs"]
+num_hidden = args["num_hidden"]
+num_layers = args["num_layers"]
+batch_size = args["batch_size"]
+learning_rate = args["learning_rate"]
+feature = args["feature"]
+overfit = args["overfit"]
 
 if feature == 'spec':
 	num_features = 128
@@ -59,8 +79,8 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 
-train_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
-valid_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
+train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit)
+valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit)
 
 def run_ctc():
 	graph = tf.Graph()
@@ -139,14 +159,14 @@ def run_ctc():
 			saver = tf.train.Saver()
 			saver.restore(session, ckpt_path)
 		for curr_epoch in range(num_epochs):
-			print ("Starting Epoch %i" % curr_epoch)	
+			log_print ("Starting Epoch %i" % curr_epoch)	
 			train_cost = 0
 			train_ler = 0
 			start = time.time()
 			num_examples = 0
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
-				print ("Total Examples seen: ",num_examples)
+				log_print ("Total Examples seen: %i"%num_examples)
 				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
 				feed = {inputs: train_inputs,
 						targets: train_targets,
@@ -171,11 +191,11 @@ def run_ctc():
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
 				num_examples += len(original)
-				# print('Original: %s' % original)
-				# print('Decoded: %s' % str_decoded)
+				# log_print('Original: %s' % original)
+				# log_print('Decoded: %s' % str_decoded)
 
-				# # TO OVERFIT UNCOMMENT BELOW LINES
-				# break
+				if overfit:
+					break
 				
 			train_cost /= num_examples
 			train_ler /= num_examples
@@ -201,7 +221,7 @@ def run_ctc():
 				# Replacing space label to space
 				val_original = val_original.replace(chr(ord('a') - 1), ' ')
 
-				print('Original val: %s' % val_original)
+				log_print('Original val: %s' % val_original)
 			
 			str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
 			# Replacing blank label to none
@@ -209,7 +229,7 @@ def run_ctc():
 			# Replacing space label to space
 			str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-			print('Decoded val: %s' % str_decoded)
+			log_print('Decoded val: %s' % str_decoded)
 
 			log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
 				  "val_cost = {:.3f}, val_ler = {:.3f}, time = {:.3f}"
@@ -218,10 +238,10 @@ def run_ctc():
 				best_ler = val_ler
 				saver = tf.train.Saver()
 				save_path = saver.save(session, "models/model_"+cell_name+"_"+str(curr_epoch)+".ckpt")
-				print("Better model found Model saved in path: %s" % save_path)
-			print ("Total Examples seen: ",num_examples)
+				log_print("Better model found Model saved in path: %s" % save_path)
+			log_print ("Total Examples seen: %i" % num_examples)
 				
-			print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
+			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
 		writer.close()
 
