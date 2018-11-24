@@ -9,6 +9,7 @@ import itertools
 ap = argparse.ArgumentParser()
 list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
 ap.add_argument("-n", "--cell", required=True, help="name of the cell unit",  choices=list_of_choices)
+ap.add_argument("-ckpt", "--checkpoint", nargs='?', default="", help="path of checkpoint")
 #ap.add_argument("-h", "--num-hidden", required=True, help="number of hidden cell unit")
 #ap.add_argument("-l", "--num-layers", required=True, help="name of layers")
 #ap.add_argument("-e","--num-epochs",required=True, help="number of epochs")
@@ -128,12 +129,15 @@ def run_ctc():
 		target = sparse_tuple_from(data_y)
 		return data_x, target, len_y, data_y, len_x, 0, unpadded_data_y
 
+	ckpt_path = args["checkpoint"]
 	best_ler = 2.0
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
 		writer = tf.summary.FileWriter("output", session.graph)
 		# Add ops to save and restore all the variables.
-		
+		if ckpt_path:
+			saver = tf.train.Saver()
+			saver.restore(session, ckpt_path)
 		for curr_epoch in range(num_epochs):
 			print ("Starting Epoch %i" % curr_epoch)	
 			train_cost = 0
@@ -170,9 +174,9 @@ def run_ctc():
 				# print('Original: %s' % original)
 				# print('Decoded: %s' % str_decoded)
 
-				# TO OVERFIT UNCOMMENT BELOW LINES
+				# # TO OVERFIT UNCOMMENT BELOW LINES
 				# break
-
+				
 			train_cost /= num_examples
 			train_ler /= num_examples
 
