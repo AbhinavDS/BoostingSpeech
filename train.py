@@ -175,7 +175,7 @@ def run_ctc():
 			train_ler = 0
 			start = time.time()
 			num_examples = 0
-			epoch_num = curr_epoch
+			epoch_num = curr_epoch - last_epoch
 			while(epoch_num<=curr_epoch):
 				log_print ("Total Examples seen: %i"%num_examples)
 				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
