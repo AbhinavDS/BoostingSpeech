@@ -11,7 +11,7 @@ ap = argparse.ArgumentParser()
 list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
 ap.add_argument("-n", "--cell", required=True, help="name of the cell unit",  choices=list_of_choices)
 ap.add_argument("-f","--feature", nargs='?', help="mfcc or spec", default="spec", choices=["mfcc", "spec"])
-ap.add_argument("-ckpt", "--checkpoint", nargs='?', default="", help="path of checkpoint")
+ap.add_argument("-ckpt", "--checkpoint", required=True, default="", help="path of checkpoint")
 ap.add_argument("-s", "--suffix",  required=True, default="", help="extra suffix for model")
 ap.add_argument("-log", "--log_file", required=True, default="out.log", help="path of log_file")
 ap.add_argument("-dev", "--dev_set",  required=True, default="dev", help="path of dev files")
@@ -154,15 +154,22 @@ def run_ctc():
 		return data_x, target, len_y, data_y, len_x, 0, unpadded_data_y
 
 	ckpt_path = args["checkpoint"]
+	last_epoch_path = ckpt_path+".last"
 	best_ler = 2.0
 	with tf.Session(graph=graph) as session:
 		tf.global_variables_initializer().run()
 		writer = tf.summary.FileWriter("output", session.graph)
 		# Add ops to save and restore all the variables.
-		if ckpt_path:
+		last_epoch = 0
+		if ckpt_path and os.path.exists(ckpt_path+'.meta'):
+			log_print ("RESTORING ...")
 			saver = tf.train.Saver()
 			saver.restore(session, ckpt_path)
-		for curr_epoch in range(num_epochs):
+			if os.path.exists(last_epoch_path):
+				f_last = open(last_epoch_path, 'r')
+				last_epoch = int(f_last.readline().strip())
+				f_last.close()
+		for curr_epoch in range(last_epoch, num_epochs):
 			log_print ("Starting Epoch %i" % (curr_epoch + 1))
 			train_cost = 0
 			train_ler = 0
@@ -247,7 +254,9 @@ def run_ctc():
 			# SAVED LAST EPOCH ANYWAY
 			saver = tf.train.Saver()
 			save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_last.ckpt")
-				
+			f_last = open("models/model_"+suffix+"_"+cell_name+"_last.ckpt.last", 'w')
+			f_last.write(str(curr_epoch))
+			f_last.close()
 			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
 		writer.close()
