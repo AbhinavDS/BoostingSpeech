@@ -12,15 +12,16 @@ list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
 ap.add_argument("-n", "--cell", required=True, help="name of the cell unit",  choices=list_of_choices)
 ap.add_argument("-f","--feature", nargs='?', help="mfcc or spec", default="spec", choices=["mfcc", "spec"])
 ap.add_argument("-ckpt", "--checkpoint", nargs='?', default="", help="path of checkpoint")
+ap.add_argument("-s", "--suffix",  required=True, default="", help="extra suffix for model")
 ap.add_argument("-log", "--log_file", required=True, default="out.log", help="path of log_file")
-ap.add_argument("-dev", "--dev_set",  nargs='?', default="dev", help="path of dev files")
-ap.add_argument("-train", "--train_set", nargs='?', default="train", help="path of train files")
+ap.add_argument("-dev", "--dev_set",  required=True, default="dev", help="path of dev files")
+ap.add_argument("-train", "--train_set", required=True, default="train", help="path of train files")
 ap.add_argument("-ne", "--num_epochs", nargs='?', type=int, default=2000, help="number of epochs")
 ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
 ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=1, help="name of layers")
 ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
 ap.add_argument("-max", "--max_feature_len", nargs='?', type=int, default=1000, help="maximum timesteps for mfcc or spec per data point")
-ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.00001")
+ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.0001")
 ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='overfit', help='Set a switch to true')
 
 args = vars(ap.parse_args())
@@ -40,6 +41,8 @@ for key in args.keys():
 log_print(args_print)
 # select model
 cell_name = args["cell"]
+suffix = args["suffix"]
+
 if cell_name == 'LSTM':
 	log_print ('Using LSTM cells')
 	import model_lstm as model
@@ -237,7 +240,7 @@ def run_ctc():
 			if val_ler < best_ler:
 				best_ler = val_ler
 				saver = tf.train.Saver()
-				save_path = saver.save(session, "models/model_"+cell_name+"_"+str(curr_epoch)+".ckpt")
+				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_"+str(curr_epoch)+".ckpt")
 				log_print("Better model found Model saved in path: %s" % save_path)
 			log_print ("Total Examples seen: %i" % num_examples)
 				
