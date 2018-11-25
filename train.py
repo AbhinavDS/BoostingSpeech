@@ -17,7 +17,7 @@ ap.add_argument("-dev", "--dev_set",  nargs='?', default="dev", help="path of de
 ap.add_argument("-train", "--train_set", nargs='?', default="train", help="path of train files")
 ap.add_argument("-ne", "--num_epochs", nargs='?', type=int, default=2000, help="number of epochs")
 ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
-ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=5, help="name of layers")
+ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=1, help="name of layers")
 ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
 ap.add_argument("-max", "--max_feature_len", nargs='?', type=int, default=1000, help="maximum timesteps for mfcc or spec per data point")
 ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.00001")
