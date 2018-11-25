@@ -26,8 +26,8 @@ ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='ove
 
 args = vars(ap.parse_args())
 
-if os.path.exists(args["log_file"]):
-	os.remove(args["log_file"])
+# if os.path.exists(args["log_file"]):
+# 	os.remove(args["log_file"])
 
 def log_print(string):
 	log_file = args["log_file"]
@@ -240,9 +240,13 @@ def run_ctc():
 			if val_ler < best_ler:
 				best_ler = val_ler
 				saver = tf.train.Saver()
-				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_"+str(curr_epoch)+".ckpt")
+				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_best.ckpt")
 				log_print("Better model found Model saved in path: %s" % save_path)
 			log_print ("Total Examples seen: %i" % num_examples)
+			
+			# SAVED LAST EPOCH ANYWAY
+			saver = tf.train.Saver()
+			save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_last.ckpt")
 				
 			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
 							 val_cost, val_ler, time.time() - start))
