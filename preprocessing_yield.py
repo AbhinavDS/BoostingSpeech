@@ -65,7 +65,7 @@ def text_to_int_sequence(text):
 			if c == ' ':
 				ch = char_map['<SPACE>']
 			else:
-				ch = char_map[c]
+				ch = char_map.get(c, char_map['<SPACE>'])
 			int_sequence.append(ch)
 	return int_sequence
 
