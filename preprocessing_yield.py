@@ -143,7 +143,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 						cur_sequence=[]
 						yield data
 
-					if overfit and count >= 1:
+					if overfit and count >= batch_size:
 						break
 			if overfit and count >= 1:
 				count = 0
