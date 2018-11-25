@@ -77,7 +77,7 @@ max_feature_len = args["max_feature_len"]
 if feature == 'spec':
 	num_features = 128
 else:
-	num_features = 50
+	num_features = 128
 
 # Accounting the 0th index +  space + blank label + eos = 29 characters
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
