@@ -19,6 +19,7 @@ ap.add_argument("-ne", "--num_epochs", nargs='?', type=int, default=2000, help="
 ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
 ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=5, help="name of layers")
 ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
+ap.add_argument("-max", "--max_feature_len", nargs='?', type=int, default=1000, help="maximum timesteps for mfcc or spec per data point")
 ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.00001")
 ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='overfit', help='Set a switch to true')
 
@@ -69,7 +70,7 @@ batch_size = args["batch_size"]
 learning_rate = args["learning_rate"]
 feature = args["feature"]
 overfit = args["overfit"]
-
+max_feature_len = args["max_feature_len"]
 if feature == 'spec':
 	num_features = 128
 else:
@@ -79,9 +80,9 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 
-train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit)
-valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit)
-
+train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len)
+valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len)
+maximum_iterations=1000# max_feature_len
 def run_ctc():
 	graph = tf.Graph()
 	with graph.as_default():
@@ -102,9 +103,9 @@ def run_ctc():
 			char_ids = tf.placeholder(tf.int32,
                                        shape=[None, None],
                                        name='ids_target')
-		
-			maximum_iterations = 100
-			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes+1, num_hidden=num_hidden, num_layers=num_layers)
+			
+			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+			logits = tf.transpose(logits, perm=[1, 0, 2])
 		else:
 			logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
@@ -175,9 +176,8 @@ def run_ctc():
 				if cell_name == "ATTN":
 					feed[input_sequence_length] = train_inputs_length
 					feed[char_ids] = char_map_str
+					
 
-
-				
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * len(original)
 				train_ler += session.run(ler, feed_dict=feed) * len(original)

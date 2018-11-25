@@ -157,10 +157,10 @@ def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, ep
 	for i in range(len(mfcc)):
 		mfcc[i] = pad_sequences(mfcc[i], maxlen=maxlen_mfcc, dtype='float', padding='post', truncating='post')
 		spec[i] = pad_sequences(spec[i], maxlen=maxlen_spec, dtype='float', padding='post', truncating='post')
-		input_length_mfcc.append(len(mfcc[i]))
-		input_length_spec.append(len(spec[i]))
+		input_length_mfcc.append(mfcc[i].shape[1])
+		input_length_spec.append(spec[i].shape[1])
 	seq_padded = pad_sequences(seq, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
-	#seq_padded = seq
+	# seq_padded = seq
 	
 	# Get sequence length
 	seq_len = np.zeros((len(seq_padded)), dtype=int)
@@ -172,11 +172,12 @@ def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, ep
 	mfcc = np.transpose(mfcc, axes=[0, 2, 1])
 	spec = np.array(spec)
 	spec = np.transpose(spec, axes=[0, 2, 1])
+	
 	# print ("mfcc::", mfcc.shape)
 	# print ("spec::", spec.shape)
 	# print ("labels::", seq_padded.shape)
 	SOS = len(char_map)
-	unpadded_data_y = seq.copy()
+	unpadded_data_y = seq_padded.copy()
 	# for i in range(len(seq_padded)):
 	# 	unpadded_data_y[i].insert(0, SOS)
 
