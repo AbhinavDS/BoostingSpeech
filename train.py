@@ -77,7 +77,7 @@ max_feature_len = args["max_feature_len"]
 if feature == 'spec':
 	num_features = 128
 else:
-	num_features = 128
+	num_features = 40
 
 # Accounting the 0th index +  space + blank label + eos = 29 characters
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
@@ -163,7 +163,7 @@ def run_ctc():
 			saver = tf.train.Saver()
 			saver.restore(session, ckpt_path)
 		for curr_epoch in range(num_epochs):
-			log_print ("Starting Epoch %i" % curr_epoch)	
+			log_print ("Starting Epoch %i" % (curr_epoch + 1))
 			train_cost = 0
 			train_ler = 0
 			start = time.time()
@@ -185,13 +185,13 @@ def run_ctc():
 				train_cost += batch_cost * len(original)
 				train_ler += session.run(ler, feed_dict=feed) * len(original)
 
-				# Decoding
-				d = session.run(decoded[0], feed_dict=feed)
-				str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
-				# Replacing blank label to none
-				str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
-				# Replacing space label to space
-				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
+				# # Decoding
+				# d = session.run(decoded[0], feed_dict=feed)
+				# str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
+				# # Replacing blank label to none
+				# str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
+				# # Replacing space label to space
+				# str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
 				num_examples += len(original)
 				# log_print('Original: %s' % original)

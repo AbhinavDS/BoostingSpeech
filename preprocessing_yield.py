@@ -128,9 +128,8 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				for i in range(1,len(time_seq_start)-2):
 					time1 = time_seq_start[i]
 					time2 = time_seq_end[i]
-					# speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)
+					speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)
 					speech_features_spec = librosa.feature.melspectrogram(y=y[time1:time2],sr=sr)
-					speech_features_mfcc = speech_features_spec
 					mfcc.append(speech_features_mfcc)
 					spec.append(speech_features_spec)
 					cur_sequence.append(test_text[i])
