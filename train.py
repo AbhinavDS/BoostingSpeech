@@ -167,7 +167,7 @@ def run_ctc():
 			saver.restore(session, ckpt_path)
 			if os.path.exists(last_epoch_path):
 				f_last = open(last_epoch_path, 'r')
-				last_epoch = int(f_last.readline().strip())
+				last_epoch = int(f_last.readline().strip()) + 1
 				f_last.close()
 		for curr_epoch in range(last_epoch, num_epochs):
 			log_print ("Starting Epoch %i" % (curr_epoch + 1))
@@ -175,8 +175,8 @@ def run_ctc():
 			train_ler = 0
 			start = time.time()
 			num_examples = 0
-			epoch_num = curr_epoch
-			while(epoch_num<=curr_epoch):
+			epoch_num = curr_epoch - last_epoch
+			while(epoch_num<=curr_epoch - last_epoch):
 				log_print ("Total Examples seen: %i"%num_examples)
 				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str = next_training_batch()
 				feed = {inputs: train_inputs,
