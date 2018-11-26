@@ -72,10 +72,13 @@ def text_to_int_sequence(text):
 def load_old_weights(weights_path):
 	return np.load(weights_path)
 
-def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800, weights_path=""):
+def get_beta(weight):
+	return random.uniform(0, 2*weight)
+
+def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800, weights_path="", sample_size=11357):
 	assert feature in ['spec', 'mfcc']
 	weights = load_old_weights(weights_path)
-	weights = weights / np.max(weights)
+	weights_max = np.max(weights)
 	current_batch = 0
 	mfcc=[]
 	spec=[]
@@ -85,10 +88,11 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 	max_files = 2
 	all_files =  os.listdir(text_dir)
 	all_files.sort()
+	beta = get_beta(weights_max)
 	while True:
-		epoch += 1
 		file_counter = 0
 		weigths_counter = -1
+		examples = 0
 		for filename in all_files:
 			# print (filename)
 			file_counter += 1
@@ -126,14 +130,21 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				
 				time_seq_start.append(time_seq_end[-1])
 				time_seq_end.append(y.shape[0])
-				for i in range(1,len(time_seq_start)-2):
-					# do sampling here
+
+				i = 1
+				while (i < len(time_seq_start)-2):
 					weigths_counter += 1
-					r = random.uniform(0,1) 
-					# print (r,weights[weigths_counter])
-					if r > weights[weigths_counter]:
+					cur_weight = weights[weigths_counter%sample_size]
+					# print (cur_weight, beta, 2*weights_max)
+					if cur_weight < beta:
+						beta -= cur_weight
+						i += 1
 						# print("skipped")
 						continue
+					# print("not skipped")
+					beta = get_beta(weights_max)
+					examples += 1
+				
 					time1 = time_seq_start[i]
 					time2 = time_seq_end[i]
 					speech_features_mfcc = librosa.feature.mfcc(y=y[time1:time2], sr=sr, n_mfcc=num_features)
@@ -143,28 +154,32 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 					cur_sequence.append(test_text[i])
 					current_batch += 1
 					count += 1
-					if (current_batch >= batch_size):
+					if ((current_batch >= batch_size) or examples > sample_size):
+						if examples > sample_size:
+							examples = 0
+							epoch += 1
 						current_batch = 0
 						data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
 						mfcc=[]
 						spec=[]
 						cur_sequence=[]
 						yield data
-					if overfit and count >= batch_size:
-						break
-			if overfit:
-				count = 0
-				weigths_counter=-1
-				break
 
-		# To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
-		if (not overfit) and (len(mfcc) > 0):
-			current_batch = 0
-			data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
-			mfcc=[]
-			spec=[]
-			cur_sequence=[]
-			yield data
+				# 		if overfit and count >= batch_size:
+				# 			break
+				# if overfit:
+				# 	count = 0
+				# 	weigths_counter=-1
+				# 	break
+
+		# # To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
+		# if (not overfit) and (len(mfcc) > 0):
+		# 	current_batch = 0
+		# 	data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
+		# 	mfcc=[]
+		# 	spec=[]
+		# 	cur_sequence=[]
+		# 	yield data
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	
 	input_length_mfcc = []

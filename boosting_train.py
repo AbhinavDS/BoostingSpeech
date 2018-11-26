@@ -26,12 +26,16 @@ ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, h
 ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='overfit', help='Set a switch to true')
 ap.add_argument('-bn',"--boost_num", required=True, type=int, default=1, help="boosted model sequence")
 ap.add_argument('-bd', "--boosting_dir", required=True, default="", help="path of boosting_dir")
-ap.add_argument("-ss", "--sample_size", nargs='?', type=int, default=11229, help="total sample size in train")
+ap.add_argument("-ss", "--sample_size", required=True, type=int, default=11229, help="total sample size in train")
 args = vars(ap.parse_args())
 
+
+cell_name = args["cell"]
+suffix = args["suffix"]
 sample_size = args["sample_size"]
 weights_path = os.path.join(args["boosting_dir"], "weights_%i.npy"%(args["boost_num"]-1))
-
+best_model = os.path.join(args["boosting_dir"], "model_"+suffix+"_"+cell_name+"_best.ckpt")
+last_model = os.path.join(args["boosting_dir"], "model_"+suffix+"_"+cell_name+"_last.ckpt")
 if not os.path.exists(weights_path):
 	weights = np.full((sample_size), (1/sample_size), dtype=np.float)
 	np.save(weights_path, weights)
@@ -50,8 +54,6 @@ for key in args.keys():
 	args_print += str(key)+"::"+str(args[key])+"\n"
 log_print(args_print)
 # select model
-cell_name = args["cell"]
-suffix = args["suffix"]
 
 if cell_name == 'LSTM':
 	log_print ('Using LSTM cells')
@@ -93,8 +95,8 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 
-train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len, weights_path=weights_path)
-valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len, weights_path=weights_path)
+train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len, weights_path=weights_path, sample_size=sample_size)
+valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len, weights_path=weights_path, sample_size=sample_size)
 
 maximum_iterations=1000# max_feature_len
 def run_ctc():
@@ -178,161 +180,163 @@ def run_ctc():
 			saver.restore(session, ckpt_path)
 			if os.path.exists(last_epoch_path):
 				f_last = open(last_epoch_path, 'r')
-				last_epoch = int(f_last.readline().strip())
+				last_epoch = int(f_last.readline().strip()) + 1
 				f_last.close()
 			curr_epoch = last_epoch
 		else:
-			for curr_epoch in range(num_epochs):
-				log_print ("Starting Epoch %i" % (curr_epoch + 1))
-				train_cost = 0
-				train_ler = 0
-				start = time.time()
-				num_examples = 0
-				epoch_num = curr_epoch
-				while(epoch_num<=curr_epoch):
-					log_print ("Total Examples seen: %i"%num_examples)
-					train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str, train_weights = next_training_batch()
-					feed = {inputs: train_inputs,
-							targets: train_targets,
-							seq_len: train_seq_len}#,
-							# weights: train_weights}
+			if os.path.exists(last_epoch_path):
+				for curr_epoch in range(last_epoch, num_epochs):
+					log_print ("Starting Epoch %i" % (curr_epoch + 1))
+					train_cost = 0
+					train_ler = 0
+					start = time.time()
+					num_examples = 0
+					epoch_num = curr_epoch - last_epoch
+					while(epoch_num<=curr_epoch - last_epoch):
+						log_print ("Total Examples seen: %i"%num_examples)
+						train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str, train_weights = next_training_batch()
+						feed = {inputs: train_inputs,
+								targets: train_targets,
+								seq_len: train_seq_len}#,
+								# weights: train_weights}
 
+						if cell_name == "ATTN":
+							feed[input_sequence_length] = train_inputs_length
+							feed[char_ids] = char_map_str
+
+						batch_cost, _ = session.run([cost, optimizer], feed)
+						
+						train_cost += batch_cost * len(original)
+						train_ler += session.run(ler, feed_dict=feed) * len(original)
+
+						# # Decoding
+						# d = session.run(decoded[0], feed_dict=feed)
+						# str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
+						# # Replacing blank label to none
+						# str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
+						# # Replacing space label to space
+						# str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
+
+						num_examples += len(original)
+						# log_print('Original: %s' % original)
+						# log_print('Decoded: %s' % str_decoded)
+
+						if overfit:
+							break
+						
+					train_cost /= num_examples
+					train_ler /= num_examples
+					
+
+					val_inputs, val_targets, val_seq_len, val_original, val_inputs_length, random_shift, char_map_str, _ = next_validation_batch()
+					val_feed = {inputs: val_inputs,
+								targets: val_targets,
+								seq_len: val_seq_len}
 					if cell_name == "ATTN":
-						feed[input_sequence_length] = train_inputs_length
-						feed[char_ids] = char_map_str
+						val_feed[input_sequence_length] = val_inputs_length
+						val_feed[char_ids] = char_map_str
 
-					batch_cost, _ = session.run([cost, optimizer], feed)
+					val_cost, val_ler = session.run([cost, ler], feed_dict=val_feed)
+
 					
-					train_cost += batch_cost * len(original)
-					train_ler += session.run(ler, feed_dict=feed) * len(original)
-
-					# # Decoding
-					# d = session.run(decoded[0], feed_dict=feed)
-					# str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
-					# # Replacing blank label to none
-					# str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
-					# # Replacing space label to space
-					# str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
-
-					num_examples += len(original)
-					# log_print('Original: %s' % original)
-					# log_print('Decoded: %s' % str_decoded)
-
-					if overfit:
-						break
+					# Decoding
+					d = session.run(decoded[0], feed_dict=val_feed)
 					
-				train_cost /= num_examples
-				train_ler /= num_examples
-				
+					if not curr_epoch:
+						val_original = ''.join([chr(x) for x in np.array(val_original[0]) + FIRST_INDEX])
+						# Replacing blank label to none
+						val_original = val_original.replace(chr(ord('z') + 1), '')
+						# Replacing space label to space
+						val_original = val_original.replace(chr(ord('a') - 1), ' ')
 
-				val_inputs, val_targets, val_seq_len, val_original, val_inputs_length, random_shift, char_map_str, _ = next_validation_batch()
-				val_feed = {inputs: val_inputs,
-							targets: val_targets,
-							seq_len: val_seq_len}
-				if cell_name == "ATTN":
-					val_feed[input_sequence_length] = val_inputs_length
-					val_feed[char_ids] = char_map_str
-
-				val_cost, val_ler = session.run([cost, ler], feed_dict=val_feed)
-
-				
-				# Decoding
-				d = session.run(decoded[0], feed_dict=val_feed)
-				
-				if not curr_epoch:
-					val_original = ''.join([chr(x) for x in np.array(val_original[0]) + FIRST_INDEX])
+						log_print('Original val: %s' % val_original)
+					
+					str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
 					# Replacing blank label to none
-					val_original = val_original.replace(chr(ord('z') + 1), '')
+					str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
 					# Replacing space label to space
-					val_original = val_original.replace(chr(ord('a') - 1), ' ')
+					str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
-					log_print('Original val: %s' % val_original)
+					log_print('Decoded val: %s' % str_decoded)
+
+					log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
+						  "val_cost = {:.3f}, val_ler = {:.3f}, time = {:.3f}"
+
+					if val_ler < best_ler:
+						best_ler = val_ler
+						saver = tf.train.Saver()
+						save_path = saver.save(session, best_model)
+						log_print("Better model found Model saved in path: %s" % save_path)
+					log_print ("Total Examples seen: %i" % num_examples)
 				
-				str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
-				# Replacing blank label to none
-				str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
-				# Replacing space label to space
-				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
+					# SAVED LAST EPOCH ANYWAY
+					saver = tf.train.Saver()
+					save_path = saver.save(session, last_model)
+					f_last = open(last_model+".last", 'w')
+					f_last.write(str(curr_epoch))
+					f_last.close()
+					log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
+								 val_cost, val_ler, time.time() - start))
 
-				log_print('Decoded val: %s' % str_decoded)
+			# TRAINING DONE; NOW BOOSTING; CALCULATE ALPHA PARAMETER; SAVING
+			else:
+				curr_epoch = 0
+			log_print ("Boosting: Final Epoch %i" % (curr_epoch + 1))
+			train_cost = 0
+			train_ler = 0
+			start = time.time()
+			num_examples = 0
+			epoch_num = curr_epoch
+			weights = load_old_weights(weights_path)
+			errors = np.zeros_like(weights)
+			while(epoch_num<=curr_epoch):
+				log_print ("Total Examples seen: %i"%num_examples)
+				train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str, train_weights = next_training_batch()
+				feed = {inputs: train_inputs,
+						targets: train_targets,
+						seq_len: train_seq_len}#,
+						# weights: train_weights}
 
-				log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
-					  "val_cost = {:.3f}, val_ler = {:.3f}, time = {:.3f}"
+				if cell_name == "ATTN":
+					feed[input_sequence_length] = train_inputs_length
+					feed[char_ids] = char_map_str
 
-				if val_ler < best_ler:
-				best_ler = val_ler
-				saver = tf.train.Saver()
-				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_best.ckpt")
-				log_print("Better model found Model saved in path: %s" % save_path)
-			log_print ("Total Examples seen: %i" % num_examples)
+				batch_cost, _ = session.run([cost, optimizer], feed)
+				
+				train_cost += batch_cost * len(original)
+				error_i, temp = session.run([ler_per_example, ler], feed_dict=feed)
+				errors[num_examples : num_examples+len(original)] = error_i
+				train_ler += (temp * len(original))
+
+				num_examples += len(original)
+
+				if overfit:
+					break
+				
+			train_cost /= num_examples
+			train_ler /= num_examples
+
+			# (b) compute		
+			error = np.sum(errors * weights) / np.sum(weights)
+
+			# (c) compute
+			K = 3
+			alpha = math.log((1-error)/error) + math.log(K-1)
 			
-			# SAVED LAST EPOCH ANYWAY
-			saver = tf.train.Saver()
-			save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_last.ckpt")
-			f_last = open("models/model_"+suffix+"_"+cell_name+"_last.ckpt.last", 'w')
-			f_last.write(str(curr_epoch))
-			f_last.close()
-			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
-							 val_cost, val_ler, time.time() - start))
+			# (d) set
+			final_weights = weights * np.exp(alpha * errors)
 
-		# TRAINING DONE; NOW BOOSTING; CALCULATE ALPHA PARAMETER; SAVING
-		
-		log_print ("Boosting: Final Epoch %i" % (curr_epoch + 1))
-		train_cost = 0
-		train_ler = 0
-		start = time.time()
-		num_examples = 0
-		epoch_num = curr_epoch
-		weights = load_old_weights(weights_path)
-		errors = np.zeros_like(weights)
-		while(epoch_num<=curr_epoch):
-			log_print ("Total Examples seen: %i"%num_examples)
-			train_inputs, train_targets, train_seq_len, original, epoch_num, train_inputs_length, char_map_str, train_weights = next_training_batch()
-			feed = {inputs: train_inputs,
-					targets: train_targets,
-					seq_len: train_seq_len}#,
-					# weights: train_weights}
+			# (e) renorm
+			final_weights = final_weights / np.sum(final_weights)
 
-			if cell_name == "ATTN":
-				feed[input_sequence_length] = train_inputs_length
-				feed[char_ids] = char_map_str
-
-			batch_cost, _ = session.run([cost, optimizer], feed)
-			
-			train_cost += batch_cost * len(original)
-			error_i, temp = session.run([ler_per_example, ler], feed_dict=feed)
-			errors[num_examples : num_examples+len(original)] = error_i
-			train_ler += (temp * len(original))
-
-			num_examples += len(original)
-
-			if overfit:
-				break
-			
-		train_cost /= num_examples
-		train_ler /= num_examples
-
-		# (b) compute		
-		error = np.sum(errors * weights) / np.sum(weights)
-
-		# (c) compute
-		K = 3
-		alpha = math.log((1-error)/error) + math.log(K-1)
-		
-		# (d) set
-		final_weights = weights * np.exp(alpha * errors)
-
-		# (e) renorm
-		final_weights = final_weights / np.sum(final_weights)
-
-		meta_data = "%f, %f, %s\n"%(alpha, error, ' '.join(args_print.split('\n')))
-		meta_path = os.path.join(os.path.dirname(weights_path), "meta.txt")
-		f = open(meta_path, 'a')
-		f.write(meta_data)
-		f.close()
-		new_weights_path = weights_path[:-5]+("%i.npy"%args["boost_num"]) 
-		np.save(new_weights_path, final_weights)
-		writer.close()
+			meta_data = "%f, %f, %s\n"%(alpha, error, ' '.join(args_print.split('\n')))
+			meta_path = os.path.join(os.path.dirname(weights_path), "meta.txt")
+			f = open(meta_path, 'a')
+			f.write(meta_data)
+			f.close()
+			new_weights_path = weights_path[:-5]+("%i.npy"%args["boost_num"]) 
+			np.save(new_weights_path, final_weights)
+			writer.close()
 
 if __name__ == '__main__':
         run_ctc()
