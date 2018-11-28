@@ -14,8 +14,8 @@ def Model(inputs,
 		#   tf.nn.rnn_cell.RNNCell
 		#   tf.nn.rnn_cell.GRUCell
 
-		fw_cells = cells = [tf.contrib.rnn.GRUCell(num_hidden) for n in range(num_layers)]
-		bw_cells = cells = [tf.contrib.rnn.GRUCell(num_hidden) for n in range(num_layers)]
+		fw_cells = cells = [tf.contrib.rnn.GRUCell(num_hidden, activation=tf.nn.relu6) for n in range(num_layers)]
+		bw_cells = cells = [tf.contrib.rnn.GRUCell(num_hidden, activation=tf.nn.relu6) for n in range(num_layers)]
         #stack = tf.contrib.rnn.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 		stack_fw = tf.contrib.rnn.MultiRNNCell(fw_cells)
 		stack_bw = tf.contrib.rnn.MultiRNNCell(bw_cells)

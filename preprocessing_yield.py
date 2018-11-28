@@ -70,7 +70,7 @@ def text_to_int_sequence(text):
 	return int_sequence
 
 
-def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=1000, maxlen_spec=1000, maxlen_seq=800):
+def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=500, maxlen_spec=500, maxlen_seq=300):
 	assert feature in ['spec', 'mfcc']
 	current_batch = 0
 	mfcc=[]
@@ -108,16 +108,21 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				time_seq_end = []
 				row=data.shape[0]
 				for x in range(0,row):
-					time=data[0][x].strip().split()[3]
-					time_seq_start.append(float(time))
-					time=data[0][x].strip().split()[4]
-					time_seq_end.append(float(time))
-					text=data[2][x][8:]
-					if text ==' ignore_time_segment_in_scoring':
+					time1=data[0][x].strip().split()[3]
+					time2=data[0][x].strip().split()[4]
+					text=data[2][x]
+					if text.startswith("female> "):
+						text = text[8:]
+					else:
+						text = text[6:]
+					if 'ignore_time_segment_in_scoring' in text:
 						text = '_'
-					text = text_to_int_sequence(text)
-					test_text.append(text)
-				
+						continue
+					num_text = text_to_int_sequence(text)+[29]
+					test_text.append(num_text)
+					time_seq_start.append(float(time1))
+					time_seq_end.append(float(time2))
+					
 				time_seq_start = list(map(operator.mul, time_seq_start, [sr]*len(time_seq_start)))
 				time_seq_start = list(map(int, time_seq_start))
 				time_seq_end = list(map(operator.mul, time_seq_end, [sr]*len(time_seq_end)))
@@ -125,6 +130,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				
 				time_seq_start.append(time_seq_end[-1])
 				time_seq_end.append(y.shape[0])
+
 				for i in range(1,len(time_seq_start)-2):
 					time1 = time_seq_start[i]
 					time2 = time_seq_end[i]
@@ -133,6 +139,8 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 					mfcc.append(speech_features_mfcc)
 					spec.append(speech_features_spec)
 					cur_sequence.append(test_text[i])
+					# if len(test_text[i]) > 400:
+					# 	print (len(speech_features_mfcc[0]), len(speech_features_spec[0]), len(test_text[i]))
 					current_batch += 1
 					count += 1
 					if (current_batch >= batch_size):
@@ -148,7 +156,6 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 			if overfit and count >= 1:
 				count = 0
 				break
-
 		# To handle left over files in the batch (e.g. last batch in epoch can have less datapoints than actual batch_size)
 		if (not overfit) and (len(mfcc) > 0):
 			current_batch = 0
@@ -166,23 +173,28 @@ def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, ep
 		spec[i] = pad_sequences(spec[i], maxlen=maxlen_spec, dtype='float', padding='post', truncating='post')
 		input_length_mfcc.append(mfcc[i].shape[1])
 		input_length_spec.append(spec[i].shape[1])
-	seq_padded = pad_sequences(seq, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
-	# seq_padded = seq
+	# seq_padded = pad_sequences(seq, maxlen=maxlen_seq, dtype='int32', padding='post', truncating='post', value=29)
+	seq_padded = seq
 	
 	# Get sequence length
 	seq_len = np.zeros((len(seq_padded)), dtype=int)
 
 	for i in range(len(seq_padded)):
-		seq_len[i] = len(seq_padded[i])
-
+		seq_len[i] = maxlen_seq#len(seq_padded[i]) 
+	
 	mfcc = np.array(mfcc)
 	mfcc = np.transpose(mfcc, axes=[0, 2, 1])
 	spec = np.array(spec)
 	spec = np.transpose(spec, axes=[0, 2, 1])
 	
+	#Do mean and std
+	mfcc = (mfcc - np.mean(mfcc))/np.std(mfcc)
+	spec = (spec - np.mean(spec))/np.std(spec)
+	
+	# print (np.max(mfcc), np.max(spec), np.min(spec), np.mean(spec), np.std(spec))
 	# print ("mfcc::", mfcc.shape)
 	# print ("spec::", spec.shape)
-	# print ("labels::", seq_padded.shape)
+	# print ("labels::", seq_len)
 	SOS = len(char_map)
 	unpadded_data_y = seq_padded.copy()
 	# for i in range(len(seq_padded)):

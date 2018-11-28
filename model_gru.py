@@ -14,7 +14,7 @@ def Model(inputs,
 		#   tf.nn.rnn_cell.RNNCell
 		#   tf.nn.rnn_cell.GRUCell
 
-		cells = [tf.contrib.rnn.GRUCell(num_hidden) for n in range(num_layers)]
+		cells = [tf.contrib.rnn.GRUCell(num_hidden, activation=tf.nn.relu6) for n in range(num_layers)]
 		stack = tf.contrib.rnn.MultiRNNCell(cells)
 		outputs, _ = tf.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32)
 

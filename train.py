@@ -20,7 +20,8 @@ ap.add_argument("-ne", "--num_epochs", nargs='?', type=int, default=2000, help="
 ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
 ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=1, help="name of layers")
 ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
-ap.add_argument("-max", "--max_feature_len", nargs='?', type=int, default=1000, help="maximum timesteps for mfcc or spec per data point")
+ap.add_argument("-maxf", "--max_feature_len", nargs='?', type=int, default=500, help="maximum timesteps for mfcc or spec per data point")
+ap.add_argument("-maxs", "--max_seq_len", nargs='?', type=int, default=500, help="maximum timesteps for target")
 ap.add_argument("-lr", "--learning_rate", nargs='?', type=float, default=1e-4, help="learning rate --0.0001")
 ap.add_argument('-o', "--overfit", action='store_true', default=False, dest='overfit', help='Set a switch to true')
 
@@ -74,6 +75,7 @@ learning_rate = args["learning_rate"]
 feature = args["feature"]
 overfit = args["overfit"]
 max_feature_len = args["max_feature_len"]
+max_seq_len = args["max_seq_len"]
 if feature == 'spec':
 	num_features = 128
 else:
@@ -83,8 +85,8 @@ else:
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
 
-train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len)
-valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_feature_len)
+train_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["train_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["train_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_seq_len)
+valid_data_gen = data_generator(text_dir='TEDLIUM_release1/%s/stm'%args["dev_set"], speech_dir='TEDLIUM_release1/%s/sph'%args["dev_set"], batch_size=batch_size, feature=feature, num_features=num_features, overfit=overfit, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_seq_len)
 maximum_iterations=1000# max_feature_len
 def run_ctc():
 	graph = tf.Graph()
@@ -115,9 +117,9 @@ def run_ctc():
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
 
-		# optimizer = tf.train.AdamOptimizer().minimize(cost)
+		optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9).minimize(cost)
+		# optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
@@ -224,7 +226,7 @@ def run_ctc():
 			# Decoding
 			d = session.run(decoded[0], feed_dict=val_feed)
 			
-			if not curr_epoch:
+			if True:#not curr_epoch:
 				val_original = ''.join([chr(x) for x in np.array(val_original[0]) + FIRST_INDEX])
 				# Replacing blank label to none
 				val_original = val_original.replace(chr(ord('z') + 1), '')
