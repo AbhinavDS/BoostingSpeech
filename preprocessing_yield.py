@@ -87,7 +87,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 		for filename in all_files:
 			# if file_counter >= max_files:
 			# 	break
-			# print (filename)
+			print (filename)
 			file_counter += 1
 			if filename.endswith(".stm"): 
 				text_path_name =(os.path.join(text_dir, filename))
@@ -118,7 +118,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 					if 'ignore_time_segment_in_scoring' in text:
 						text = '_'
 						continue
-					num_text = text_to_int_sequence(text)+[29]
+					num_text = text_to_int_sequence(text[:maxlen_seq-101])+[29]
 					test_text.append(num_text)
 					time_seq_start.append(float(time1))
 					time_seq_end.append(float(time2))
