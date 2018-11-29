@@ -158,7 +158,9 @@ def run_ctc():
 	ckpt_path = args["checkpoint"]
 	last_epoch_path = ckpt_path+".last"
 	best_ler = 2.0
-	with tf.Session(graph=graph) as session:
+	config = tf.ConfigProto()
+	config.gpu_options.allow_growth = True
+	with tf.Session(graph=graph, config=config) as session:
 		tf.global_variables_initializer().run()
 		writer = tf.summary.FileWriter("output", session.graph)
 		# Add ops to save and restore all the variables.
@@ -170,6 +172,7 @@ def run_ctc():
 			if os.path.exists(last_epoch_path):
 				f_last = open(last_epoch_path, 'r')
 				last_epoch = int(f_last.readline().strip()) + 1
+				best_ler = float(f_last.readline().strip())
 				f_last.close()
 		for curr_epoch in range(last_epoch, num_epochs):
 			log_print ("Starting Epoch %i" % (curr_epoch + 1))
@@ -208,6 +211,7 @@ def run_ctc():
 
 				if overfit:
 					break
+			log_print ("Total Examples seen: %i" % num_examples)
 				
 			train_cost /= num_examples
 			train_ler /= num_examples
@@ -233,34 +237,34 @@ def run_ctc():
 				# Replacing space label to space
 				val_original = val_original.replace(chr(ord('a') - 1), ' ')
 
-				log_print('Original val: %s' % val_original)
+				log_print('Original val: %s : (%i)' % (val_original, len(val_original)))
 			
 			str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
 			# Replacing blank label to none
 			str_decoded = str_decoded.replace(chr(ord('z') + 1), '')
 			# Replacing space label to space
 			str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
-
-			log_print('Decoded val: %s' % str_decoded)
+			str_decoded = str_decoded[:str_decoded.find('}')]+'}'
+			log_print('Decoded val: %s : (%i)' % (str_decoded, len(str_decoded)))
 
 			log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
 				  "val_cost = {:.3f}, val_ler = {:.3f}, time = {:.3f}"
 
+			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
+							 val_cost, val_ler, time.time() - start))
 			if val_ler < best_ler:
 				best_ler = val_ler
 				saver = tf.train.Saver()
 				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_best.ckpt")
 				log_print("Better model found Model saved in path: %s" % save_path)
-			log_print ("Total Examples seen: %i" % num_examples)
 			
 			# SAVED LAST EPOCH ANYWAY
 			saver = tf.train.Saver()
 			save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_last.ckpt")
 			f_last = open("models/model_"+suffix+"_"+cell_name+"_last.ckpt.last", 'w')
-			f_last.write(str(curr_epoch))
+			f_last.write(str(curr_epoch)+'\n')
+			f_last.write(str(best_ler))
 			f_last.close()
-			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
-							 val_cost, val_ler, time.time() - start))
 		writer.close()
 
 if __name__ == '__main__':
