@@ -201,7 +201,7 @@ def run_ctc():
 				batch_cost, _ = session.run([cost, optimizer], feed)
 				train_cost += batch_cost * len(original)
 				train_ler += session.run(ler, feed_dict=feed) * len(original)
-
+				
 				# # Decoding
 				# d = session.run(decoded[0], feed_dict=feed)
 				# str_decoded = ''.join([chr(x) for x in np.asarray(d[1]) + FIRST_INDEX])
@@ -252,7 +252,7 @@ def run_ctc():
 			str_decoded = str_decoded[:str_decoded.find('}')]+'}'
 			log_print('Decoded val: %s : (%i)' % (str_decoded, len(str_decoded)))
 
-			log = "Epoch {}/{}, train_cost = {:.3f}, train_ler = {:.3f}, " \
+			log = "Epoch {}/{} : train_cost = {:.3f}, train_ler = {:.3f}, " \
 				  "val_cost = {:.3f}, val_ler = {:.3f}, time = {:.3f}"
 
 			log_print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,

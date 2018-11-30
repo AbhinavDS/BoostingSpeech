@@ -10,32 +10,46 @@ import argparse
 ap = argparse.ArgumentParser()
 list_of_choices = ["LSTM", "GRU", "BILSTM", "BIGRU", "ATTN"]
 ap.add_argument("-n", "--cell", required=True, help="name of the cell unit",  choices=list_of_choices)
+ap.add_argument("-f","--feature", nargs='?', help="mfcc or spec", default="spec", choices=["mfcc", "spec"])
 ap.add_argument("-ckpt", "--checkpoint", required=True, help="path of checkpoint")
 ap.add_argument("-logits", "--logits_dir", default="logits/", help="path of logits dir")
-# ap.add_argument("-h", "--num-hidden", required=True, help="number of hidden cell unit")
-#ap.add_argument("-l", "--num-layers", required=True, help="name of layers")
-#ap.add_argument("-e","--num-epochs",required=True, help="number of epochs")
-#ap.add_argument("-e","--feature",required=True, help="mfcc or spec")
-#ap.add_argument("-e","--lear",required=True, help="learning rate --0.00001")
+ap.add_argument("-log", "--log_file", required=True, default="out.log", help="path of log_file")
+ap.add_argument("-nh", "--num_hidden",  nargs='?', type=int, default=100, help="number of hidden cell unit")
+ap.add_argument("-nl", "--num_layers", nargs='?', type=int, default=1, help="name of layers")
+ap.add_argument("-bs", "--batch_size", nargs='?', type=int, default=128, help="batch_size")
+ap.add_argument("-maxf", "--max_feature_len", nargs='?', type=int, default=500, help="maximum timesteps for mfcc or spec per data point")
+ap.add_argument("-maxs", "--max_seq_len", nargs='?', type=int, default=500, help="maximum timesteps for target")
 
 args = vars(ap.parse_args())
 
 # select model
+def log_print(string):
+	log_file = args["log_file"]
+	f = open(log_file,"a")
+	f.write(string+"\n")
+	f.close()
+
+args_print = "ARGS::\n"
+for key in args.keys():
+	args_print += str(key)+"::"+str(args[key])+"\n"
+log_print(args_print)
+
+# select model
 cell_name = args["cell"]
 if cell_name == 'LSTM':
-	print ('Using LSTM cells')
+	log_print ('Using LSTM cells')
 	import model_lstm as model
 elif cell_name == 'GRU':
-	print ('Using GRU cells')
+	log_print ('Using GRU cells')
 	import model_gru as model
 elif cell_name == 'BILSTM':
-	print ('Using Bi-LSTM cells')
+	log_print ('Using Bi-LSTM cells')
 	import model_bilstm as model
 elif cell_name == 'BIGRU':
-	print ('Using Bi-GRU cells')
+	log_print ('Using Bi-GRU cells')
 	import model_bigru as model
 elif cell_name == 'ATTN':
-	print ('using Attention')
+	log_print ('using Attention')
 	import model_attention as model
 
 
@@ -43,23 +57,23 @@ SPACE_TOKEN = '<space>'
 SPACE_INDEX = 0
 FIRST_INDEX = ord('a') - 1 
 
-
-# Some configs
-feature = 'spec'
+# Hyper-parameter
+num_hidden = args["num_hidden"]
+num_layers = args["num_layers"]
+batch_size = args["batch_size"]
+feature = args["feature"]
+max_feature_len = args["max_feature_len"]
+max_seq_len = args["max_seq_len"]
 if feature == 'spec':
 	num_features = 128
 else:
-	num_features = 50
+	num_features = 40
 
+learning_rate = 0.1
 # Accounting the 0th index +  space + blank label + eos = 29 characters
 num_classes = ord('z') - ord('a') + 1 + 1 + 1 + 1 + 1
 
-# Hyper-parameter
-num_hidden = 100#args["num-hidden"]
-num_layers = 1#args["num-layers"]
-batch_size = 128
-
-test_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features)
+test_data_gen = data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_release1/test/sph', batch_size=batch_size, feature=feature, num_features=num_features, overfit=False, maxlen_mfcc=max_feature_len, maxlen_spec=max_feature_len, maxlen_seq=max_seq_len)
 
 def run_ctc():
 	graph = tf.Graph()
@@ -75,14 +89,24 @@ def run_ctc():
 		
 		# 1d array of size [batch_size]
 		seq_len = tf.placeholder(tf.int32, [None])
-		logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+
+		if cell_name == 'ATTN':
+			input_sequence_length = tf.placeholder(tf.int32, [None])
+			char_ids = tf.placeholder(tf.int32,
+                                       shape=[None, None],
+                                       name='ids_target')
+			
+			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
+			logits = tf.transpose(logits, perm=[1, 0, 2])
+		else:
+			logits = model.Model(inputs, seq_len, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 		
 		loss = tf.nn.ctc_loss(targets, logits, seq_len)
 		cost = tf.reduce_mean(loss)
 
-		# optimizer = tf.train.AdamOptimizer().minimize(cost)
+		optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 		# optimizer = tf.train.MomentumOptimizer(learning_rate=0.01, momentum=0.9).minimize(cost)
-		optimizer = tf.train.MomentumOptimizer(learning_rate=1e-4, momentum=0.9).minimize(cost)
+		# optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9).minimize(cost)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(cost)
 
 		# Option 2: tf.contrib.ctc.ctc_beam_search_decoder
@@ -107,7 +131,8 @@ def run_ctc():
 
 	def next_testing_batch():
 		global test_data_gen
-		data_x, data_y, len_y, epoch_num = next(test_data_gen)
+		data_x, data_y, len_y, epoch_num, len_x, unpadded_data_y = next(test_data_gen)
+
 		target = sparse_tuple_from(data_y)
 		return data_x, target, len_y, data_y, epoch_num
 
@@ -127,7 +152,7 @@ def run_ctc():
 		saver = tf.train.Saver()
 		saver.restore(session, ckpt_path)
 		for curr_epoch in range(1):
-			print ("Starting Testing")	
+			log_print ("Starting Testing")	
 			test_cost = 0
 			test_ler = 0
 			start = time.time()
@@ -135,7 +160,7 @@ def run_ctc():
 			num_i = 0
 			epoch_num = curr_epoch
 			while(epoch_num<=curr_epoch):
-				print ("Total Examples seen: ",num_examples)
+				log_print ("Total Examples seen: %i"%num_examples)
 				test_inputs, test_targets, test_seq_len, original, epoch_num = next_testing_batch()
 				feed = {inputs: test_inputs,
 						targets: test_targets,
@@ -161,16 +186,16 @@ def run_ctc():
 				str_decoded = str_decoded.replace(chr(ord('a') - 1), ' ')
 
 				num_examples += len(original)
-				# print('Original: %s' % original)
-				# print('Decoded: %s' % str_decoded)
+				# log_print('Original: %s' % original)
+				# log_print('Decoded: %s' % str_decoded)
 			
 			test_cost /= num_examples
 			test_ler /= num_examples
 
 			log = "Epoch {}/{}, test_cost = {:.3f}, test_ler = {:.3f}, time = {:.3f}"
-			print ("Total Examples seen: ",num_examples)
+			log_print ("Total Examples seen: %i"%num_examples)
 				
-			print(log.format(curr_epoch + 1, 1, test_cost, test_ler, time.time() - start))
+			log_print(log.format(curr_epoch + 1, 1, test_cost, test_ler, time.time() - start))
 		
 		writer.close()
 

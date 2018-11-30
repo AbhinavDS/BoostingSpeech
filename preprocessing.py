@@ -144,7 +144,7 @@ def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir='TEDLIUM_rel
 				count += 1
 	current_batch = 0
 	data = pad_stuff(mfcc, spec, cur_sequence, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch)
-	with open(text_dir+'/data.pickle', 'wb') as f:
+	with open(text_dir+'/data_mfcc.pickle', 'wb') as f:
 		pickle.dump(data, f)
 
 def pad_stuff(mfcc, spec, seq, maxlen_mfcc, maxlen_spec, maxlen_seq, feature, epoch):	

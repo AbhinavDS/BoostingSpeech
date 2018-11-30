@@ -71,12 +71,15 @@ def text_to_int_sequence(text):
 
 
 def data_generator(text_dir='TEDLIUM_release1/test/stm', speech_dir="", batch_size=1, feature='spec', num_features=50, overfit=False, maxlen_mfcc=500, maxlen_spec=500, maxlen_seq=300):
-	pickle_file = text_dir+'/../data.pickle'
+	assert feature in ['spec', 'mfcc']
+	if feature == 'spec':
+		pickle_file = text_dir+'/../data.pickle'
+	else:
+		pickle_file = text_dir+'/../data_mfcc.pickle'
 	data = pickle.load( open( pickle_file, "rb" ))
 	(spec, seq_padded, seq_len, epoch, input_length_spec, unpadded_data_y) = data
 	total_size = len(spec)
 	# print (spec.shape, len(seq_padded), len(seq_len), epoch, len(input_length_spec), len(unpadded_data_y))
-	assert feature in ['spec', 'mfcc']
 	epoch = 0
 	while True:
 		for i in range(0,total_size,batch_size):
