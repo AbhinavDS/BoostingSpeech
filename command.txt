@@ -1,0 +1,1 @@
+python3 train.py  --cell GRU -log logs/layers6.log -train train -dev dev -lr 5e-4 -s layers6 -ckpt models/model_layers6_GRU_last.ckpt -maxf 150 -maxs 150  -bs 1024
