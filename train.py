@@ -159,6 +159,11 @@ def run_ctc():
 	last_epoch_path = ckpt_path+".last"
 	best_ler = 2.0
 	config = tf.ConfigProto()
+	ckpt_dir = "models/model_"+suffix+"_"+cell_name
+	
+	if not os.path.exists(ckpt_dir):
+		os.makedirs(ckpt_dir)
+
 	config.gpu_options.allow_growth = True
 	with tf.Session(graph=graph, config=config) as session:
 		tf.global_variables_initializer().run()
@@ -255,13 +260,13 @@ def run_ctc():
 			if val_ler < best_ler:
 				best_ler = val_ler
 				saver = tf.train.Saver()
-				save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_best.ckpt")
+				save_path = saver.save(session, ckpt_dir+"/best.ckpt")
 				log_print("Better model found Model saved in path: %s" % save_path)
 			
 			# SAVED LAST EPOCH ANYWAY
 			saver = tf.train.Saver()
-			save_path = saver.save(session, "models/model_"+suffix+"_"+cell_name+"_last.ckpt")
-			f_last = open("models/model_"+suffix+"_"+cell_name+"_last.ckpt.last", 'w')
+			save_path = saver.save(session, ckpt_dir+"/last.ckpt")
+			f_last = open(ckpt_dir+"/last.ckpt.last", 'w')
 			f_last.write(str(curr_epoch)+'\n')
 			f_last.write(str(best_ler))
 			f_last.close()
