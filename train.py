@@ -181,7 +181,7 @@ def run_ctc():
 				variable_parameters *= dim.value
 			print(variable_parameters)
 			total_parameters += variable_parameters
-		log_print("Total Parameters: "+str(total_parameters))
+		print("Total Parameters: "+str(total_parameters))
 		# Add ops to save and restore all the variables.
 		last_epoch = 0
 		if ckpt_path and os.path.exists(ckpt_path+'.meta'):
