@@ -106,8 +106,8 @@ def run_ctc():
 		if cell_name == 'ATTN':
 			input_sequence_length = tf.placeholder(tf.int32, [None])
 			char_ids = tf.placeholder(tf.int32,
-                                       shape=[None, None],
-                                       name='ids_target')
+													shape=[None, None],
+													name='ids_target')
 			
 			logits = model.Model(inputs, seq_len, input_sequence_length, maximum_iterations, char_ids, num_classes=num_classes, num_hidden=num_hidden, num_layers=num_layers)
 			logits = tf.transpose(logits, perm=[1, 0, 2])
@@ -168,6 +168,20 @@ def run_ctc():
 	with tf.Session(graph=graph, config=config) as session:
 		tf.global_variables_initializer().run()
 		writer = tf.summary.FileWriter("output", session.graph)
+
+		total_parameters = 0
+		for variable in tf.trainable_variables():
+			# shape is an array of tf.Dimension
+			shape = variable.get_shape()
+			print(shape)
+			print(len(shape))
+			variable_parameters = 1
+			for dim in shape:
+				print(dim)
+				variable_parameters *= dim.value
+			print(variable_parameters)
+			total_parameters += variable_parameters
+		log_print("Total Parameters: "+str(total_parameters))
 		# Add ops to save and restore all the variables.
 		last_epoch = 0
 		if ckpt_path and os.path.exists(ckpt_path+'.meta'):
@@ -273,4 +287,4 @@ def run_ctc():
 		writer.close()
 
 if __name__ == '__main__':
-        run_ctc()
+	run_ctc()
